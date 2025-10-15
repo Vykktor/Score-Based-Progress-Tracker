@@ -3,1442 +3,757 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Goal Tracker</title>
+    <title>Personal Productivity Tracker</title>
+    <!-- Load required front-end libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f9;
+            background-color: #f7f9fc;
         }
-        /* Custom scrollbar */
-        .task-list-container::-webkit-scrollbar, .history-list-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        .task-list-container::-webkit-scrollbar-thumb, .history-list-container::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 4px;
-        }
-        /* Define colors for the dynamic goals */
-        .bg-daily { background-color: #4f46e5; }
-        .bg-weekly { background-color: #10b981; }
-        .bg-monthly { background-color: #f59e0b; }
-        .bg-yearly { background-color: #ef4444; }
-        .text-daily { color: #4f46e5; }
-        .text-weekly { color: #10b981; }
-        .text-monthly { color: #f59e0b; }
-        .text-yearly { color: #ef4444; }
-        /* Budget bar color transition */
-        .bg-budget-ok { background-color: #10b981; }
-        .bg-budget-warning { background-color: #f59e0b; }
-        .bg-budget-critical { background-color: #ef4444; }
     </style>
 </head>
-<body class="min-h-screen p-4 sm:p-8 flex justify-center items-start">
-
-    <div id="app" class="w-full max-w-2xl bg-white shadow-xl rounded-3xl p-6 sm:p-8">
-        <header class="mb-6 border-b pb-4">
-            <h1 class="text-3xl font-bold text-gray-800 flex items-center">
-                <i class="fas fa-chart-line text-indigo-600 mr-3"></i>
-                Score Tracker
-            </h1>
-            <p id="user-id-display" class="text-xs text-gray-400 mt-1"></p>
-        </header>
-        
-        <!-- View Toggle Navigation -->
-        <section class="mb-6 flex space-x-3">
-            <button id="nav-tracker-btn" class="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-xl font-semibold shadow-md transition duration-150">
-                <i class="fas fa-list-check mr-2"></i> Current Tasks
-            </button>
-            <button id="nav-history-btn" class="flex-1 bg-gray-300 text-gray-800 py-3 px-4 rounded-xl font-semibold shadow-md hover:bg-gray-400 transition duration-150">
-                <i class="fas fa-history mr-2"></i> Score History
-            </button>
-        </section>
-
-        <!-- === 1. TRACKER VIEW === -->
-        <div id="tracker-view">
-        
-            <!-- DYNAMIC GOAL DISPLAY SECTION -->
-            <section class="mb-6 p-4 bg-gray-100 rounded-xl border border-gray-300">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-bullseye mr-2 text-indigo-600"></i> Goal Progress
-                </h2>
-                
-                <!-- Period Selector Tabs -->
-                <div class="flex p-1 bg-white rounded-lg shadow-inner mb-4">
-                    <button id="daily-btn" class="flex-1 px-3 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 focus:outline-none" data-period="daily">Daily</button>
-                    <button id="weekly-btn" class="flex-1 px-3 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 focus:outline-none" data-period="weekly">Weekly</button>
-                    <button id="monthly-btn" class="flex-1 px-3 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 focus:outline-none" data-period="monthly">Monthly</button>
-                    <button id="yearly-btn" class="flex-1 px-3 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all duration-200 focus:outline-none" data-period="yearly">Yearly</button>
-                </div>
-
-                <!-- Goal Display Card -->
-                <div id="goal-card" class="bg-daily text-white p-6 rounded-xl shadow-lg transform transition-all duration-300">
-                    <p id="goal-title" class="text-sm md:text-lg font-bold mb-1 opacity-80">-- Goal --</p>
-                    <p id="goal-target-text" class="text-3xl md:text-4xl font-extrabold">
-                        0 / 0 <span id="goal-unit" class="text-lg font-medium opacity-80">Points</span>
-                    </p>
-                </div>
-
-                <!-- Progress Bar and Details -->
-                <div class="space-y-4 pt-4">
-                    <div class="flex justify-between items-center text-gray-700">
-                        <span id="progress-status" class="font-medium text-sm"></span>
-                        <span id="progress-percentage" class="font-bold text-lg">0%</span>
-                    </div>
-
-                    <!-- The actual progress bar -->
-                    <div class="w-full bg-gray-200 rounded-full h-3 shadow-inner">
-                        <div id="progress-bar" class="h-3 rounded-full transition-all duration-500 ease-in-out" style="width: 0%;"></div>
-                    </div>
-                </div>
-            </section>
-            <!-- END DYNAMIC GOAL DISPLAY SECTION -->
-
-
-            <!-- Task Budget Bar -->
-            <section class="mb-6 p-4 bg-white rounded-xl border border-gray-300">
-                <h2 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
-                    <i class="fas fa-coins text-yellow-600 mr-2"></i> Task Budget
-                </h2>
-                <div class="flex justify-between items-center text-gray-700">
-                    <span id="budget-status" class="font-medium text-sm">Loading...</span>
-                    <span id="budget-used" class="font-bold text-lg text-indigo-600">0 / 50 Pts</span>
-                </div>
-                <!-- Budget Progress Bar -->
-                <div class="w-full bg-gray-200 rounded-full h-3 shadow-inner mt-2">
-                    <div id="budget-bar" class="h-3 rounded-full transition-all duration-500 ease-in-out bg-budget-ok" style="width: 0%;"></div>
-                </div>
-                <p id="budget-message" class="text-sm text-red-500 mt-2 hidden">Budget exceeded! Complete or delete tasks to free up points.</p>
-            </section>
-            
-            <!-- Set Goal and Productivity Filter -->
-            <section class="mb-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
-                 <button id="set-goal-btn" class="flex-1 bg-indigo-500 text-white py-3 px-4 rounded-xl font-semibold shadow-md hover:bg-indigo-600 transition duration-150">
-                    <i class="fas fa-bullseye mr-2"></i> Set Goal
-                </button>
-                <button id="filter-10pt-btn" class="flex-1 bg-green-500 text-white py-3 px-4 rounded-xl font-semibold shadow-md hover:bg-green-600 transition duration-150" data-filter="off">
-                    <i class="fas fa-filter mr-2"></i> Focus: High Value (10 pts)
-                </button>
-            </section>
-
-            <!-- Add New Task Form -->
-            <section class="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <h2 class="text-xl font-semibold text-gray-700 mb-3">Add a New Task</h2>
-                <form id="new-task-form" class="space-y-3">
-                    <input type="text" id="task-name" placeholder="E.g., Finish Q3 Report (10 points)" required
-                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-                    <select id="task-points" required
-                            class="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="" disabled selected>Select Point Value (Prioritization)</option>
-                        <option value="1">1 Point (Small Routine Task)</option>
-                        <option value="5">5 Points (Medium/Important Task)</option>
-                        <option value="10">10 Points (High Value / "Eat the Frog")</option>
-                        <!-- NEW SAFETY VALVE OPTION -->
-                        <option value="100">100 Points (Future High-Value Project - Acknowledge Request)</option>
-                    </select>
-                    <button type="submit" id="add-task-button" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-150 shadow-md">
-                        <i class="fas fa-plus-circle mr-2"></i> Add Task
-                    </button>
-                </form>
-            </section>
-
-            <!-- Task List -->
-            <section class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Your Tasks</h2>
-                <!-- Task List Container -->
-                <div id="task-list" class="task-list-container space-y-3 max-h-96 overflow-y-auto pr-2">
-                    <!-- Tasks will be injected here -->
-                    <p id="loading-message" class="text-center text-gray-500 py-6">Loading tasks...</p>
-                </div>
-                <p id="no-tasks-message" class="text-center text-gray-500 py-6 hidden">All clear! Time to add a new goal.</p>
-            </section>
-
-            <!-- Action Buttons (Daily Reset and Master Reset) -->
-            <section class="space-y-3">
-                <button id="reset-tasks-btn" class="w-full bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-400 transition duration-150 shadow-md">
-                    <i class="fas fa-broom mr-2"></i> Daily Task Clean-up
-                </button>
-                <button id="master-reset-btn" class="w-full bg-red-100 text-red-600 py-3 rounded-xl font-semibold border-2 border-red-300 hover:bg-red-200 transition duration-150 shadow-md">
-                    <i class="fas fa-power-off mr-2"></i> MASTER RESET (Clear All Data)
-                </button>
-            </section>
-        </div>
-        
-        <!-- === 2. HISTORY VIEW (Hidden by default) === -->
-        <div id="history-view" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                <i class="fas fa-calendar-check mr-2 text-indigo-600"></i> Daily Score History
-            </h2>
-            
-            <p class="text-sm text-gray-600 mb-4">A record of your scores and goal achievements for each day's cleanup.</p>
-            
-            <div id="history-list" class="history-list-container space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                <!-- History items will be injected here -->
-                <p class="text-center text-gray-500 py-6">Loading history...</p>
-            </div>
-            
-            <p id="no-history-message" class="text-center text-gray-500 py-6 hidden">No recorded scores yet. Complete a Daily Task Clean-up to save your first score!</p>
-        </div>
-        
-
+<body>
+    <!-- Root element for React app -->
+    <div id="root">
+        <div class="p-8 text-center text-gray-500">Loading Application...</div>
     </div>
 
-    <!-- Modal for Setting Goal -->
-    <div id="goal-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
-            <h3 class="text-xl font-semibold mb-4 text-gray-800">Set Target Score</h3>
-            <p class="text-sm text-gray-600 mb-4">Choose a frequency and set a score target.</p>
-            
-            <select id="goal-frequency" 
-                    class="w-full p-3 border border-gray-300 rounded-lg mb-3 bg-white focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="daily">Daily Goal</option>
-                <option value="weekly">Weekly Goal</option>
-                <option value="monthly">Monthly Goal</option>
-                <option value="yearly">Yearly Goal</option> 
-            </select>
-            
-            <input type="number" id="goal-input" placeholder="E.g., 20" min="1"
-                   class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-indigo-500 focus:border-indigo-500">
-            <div class="flex justify-end space-x-3">
-                <button id="cancel-goal-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150">Cancel</button>
-                <button id="save-goal-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition duration-150">Save Goal</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Modal for Daily Task Reset Confirmation -->
-    <div id="reset-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800 flex items-center">
-                <i class="fas fa-trash-alt text-red-500 mr-2"></i> Daily Task Cleanup
-            </h3>
-            <p class="text-gray-700 mb-4">This action will clear your current task list to prepare for a new day. Please choose what to remove:</p>
-            
-            <div class="space-y-3 mb-6">
-                <!-- Option 1: Delete ALL Completed Tasks (Always checked) -->
-                <div class="flex items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                    <input type="checkbox" id="delete-completed" checked disabled 
-                           class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-3">
-                    <label for="delete-completed" class="font-semibold text-green-700">Remove ALL <span class="font-bold">Completed Tasks</span></label>
-                </div>
+    <!-- 
+        FIX: Firebase SDKs MUST be loaded synchronously before the app script 
+        to ensure the 'firebase' global object is defined.
+    -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
 
-                <!-- Option 2: Delete ALL Incomplete Tasks -->
-                <div class="flex items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <input type="checkbox" id="delete-incomplete" 
-                           class="h-5 w-5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 mr-3">
-                    <label for="delete-incomplete" class="font-semibold text-yellow-700">Remove ALL <span class="font-bold">Incomplete Tasks</span> (Start completely fresh)</label>
-                </div>
-                
-                <p class="text-sm text-indigo-700 bg-indigo-50 p-3 rounded-lg border border-indigo-200 font-medium">
-                    <i class="fas fa-info-circle mr-1"></i> Your final score of <span id="current-score-modal" class="font-extrabold">0</span> points will be saved to your history before tasks are cleared.
-                </p>
-            </div>
+    <!-- The entire application code, placed after dependencies -->
+    <script type="text/babel">
+        // Access global React functionality
+        const { useState, useEffect, useCallback, useMemo } = React;
 
-            <div class="flex justify-end space-x-3">
-                <button id="cancel-reset-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150">Cancel</button>
-                <button id="confirm-reset-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-150">Confirm Cleanup</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Modal for MASTER RESET Confirmation -->
-    <div id="master-reset-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg border-t-8 border-red-500">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800 flex items-center">
-                <i class="fas fa-triangle-exclamation text-red-500 mr-2"></i> CONFIRM DATA DELETION
-            </h3>
-            <p class="text-red-700 bg-red-100 p-3 rounded-lg font-semibold mb-4">
-                <i class="fas fa-skull-crossbones mr-1"></i> This is a permanent action.
-            </p>
-            <p class="text-gray-700 mb-6">
-                Are you absolutely sure you want to perform a <strong>MASTER RESET</strong>?
-            </p>
-             <p class="text-gray-700 mb-6 font-bold">This action will permanently delete:</p>
+        // Access global Firebase functionality (now guaranteed to be defined)
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = firebase.auth;
+        const { getFirestore, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query } = firebase.firestore;
+        const { setLogLevel } = firebase.firestore; 
 
-            <ul class="list-disc list-inside space-y-2 mb-6 ml-4 text-gray-600">
-                <li><strong class="text-red-600">All Current Tasks</strong> (Pending and Completed)</li>
-                <li><strong class="text-red-600">All Score History Records</strong></li>
-                <li><strong class="text-red-600">All Saved Goals</strong> (Daily, Weekly, Monthly, Yearly)</li>
-            </ul>
-
-            <div class="flex justify-end space-x-3">
-                <button id="cancel-master-reset-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150">Cancel</button>
-                <button id="confirm-master-reset-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-150">YES, Delete All Data</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Custom Message Box (Replaces alert()) -->
-    <div id="message-box" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
-            <h3 id="message-title" class="text-xl font-semibold mb-3 text-gray-800">Message</h3>
-            <p id="message-content" class="text-gray-700 mb-4"></p>
-            <div class="flex justify-end">
-                <button id="message-close-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition duration-150">Got It</button>
-            </div>
-        </div>
-    </div>
-
-
-    <script type="module">
-        // --- FIREBASE IMPORTS ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // Use Debug logging for development
-        setLogLevel('Debug');
-
-        // --- GLOBAL CONSTANTS & VARIABLES ---
-        const MAX_TASK_BUDGET = 50; // The maximum point value allowed for all INCOMPLETE tasks
-        const HIGH_VALUE_PHASE_2_POINTS = 100; // Special value for the safety valve
-        // NEW: Recommended minimum for the daily goal target
-        const MIN_RECOMMENDED_DAILY_GOAL = 10; 
-        
+        // Initialize environment variables (MANDATORY)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        
-        // Corrected the variable assignment from 'initialAuthToken' to '__initial_auth_token'
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
-        
-        let db;
-        let auth;
-        let userId = 'anonymous'; // Default until authenticated
-        
-        // Data State
-        let tasks = [];
-        let scoreHistory = [];
-        let isFilterActive = false;
-        let currentBudgetPoints = 0; // The sum of points from all *incomplete* tasks
-        let uiState = { welcomeHidden: false }; // State for UX messages
-        
-        // Goal State - Stored in Firestore
-        let goals = {
-            daily: 0,
-            weekly: 0,
-            monthly: 0,
-            yearly: 0
-        };
-        let currentPeriod = 'daily'; // Default view is daily
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // --- DOM Elements ---
-        const taskListEl = document.getElementById('task-list');
-        const userIdDisplayEl = document.getElementById('user-id-display');
-        const noTasksMessageEl = document.getElementById('no-tasks-message');
-        const loadingMessageEl = document.getElementById('loading-message');
-        const filterBtn = document.getElementById('filter-10pt-btn');
-        const addTaskButton = document.getElementById('add-task-button');
-        const taskNameInput = document.getElementById('task-name');
-        const taskPointsSelect = document.getElementById('task-points');
-        
-        // Dynamic Goal Elements
-        const goalCardEl = document.getElementById('goal-card');
-        const goalTitleEl = document.getElementById('goal-title');
-        const goalTargetTextEl = document.getElementById('goal-target-text');
-        
-        const progressBarEl = document.getElementById('progress-bar');
-        const progressPercentageEl = document.getElementById('progress-percentage');
-        const progressStatusEl = document.getElementById('progress-status');
-        
-        // Task Budget Elements
-        const budgetStatusEl = document.getElementById('budget-status');
-        const budgetUsedEl = document.getElementById('budget-used');
-        const budgetBarEl = document.getElementById('budget-bar');
-        const budgetMessageEl = document.getElementById('budget-message');
-        
-        // Goal Period Buttons
-        const periodBtns = {
-            daily: document.getElementById('daily-btn'),
-            weekly: document.getElementById('weekly-btn'),
-            monthly: document.getElementById('monthly-btn'),
-            yearly: document.getElementById('yearly-btn')
+        // --- Date Helper Functions ---
+        const getDayStart = (date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            return d;
         };
 
+        const isSameDay = (d1, d2) => {
+            const date1 = getDayStart(d1);
+            const date2 = getDayStart(d2);
+            return date1.getTime() === date2.getTime();
+        };
 
-        // --- View Elements ---
-        const trackerViewEl = document.getElementById('tracker-view');
-        const historyViewEl = document.getElementById('history-view');
-        const navTrackerBtn = document.getElementById('nav-tracker-btn');
-        const navHistoryBtn = document.getElementById('nav-history-btn');
-        const historyListEl = document.getElementById('history-list');
-        const noHistoryMessageEl = document.getElementById('no-history-message');
+        const isYesterday = (date) => {
+            const d = getDayStart(new Date());
+            d.setDate(d.getDate() - 1);
+            return isSameDay(date, d);
+        };
 
-        // --- MODAL Elements (Goal) ---
-        const goalModal = document.getElementById('goal-modal');
-        const setGoalBtn = document.getElementById('set-goal-btn');
-        const cancelGoalBtn = document.getElementById('cancel-goal-btn');
-        const saveGoalBtn = document.getElementById('save-goal-btn');
-        const goalInput = document.getElementById('goal-input');
-        const goalFrequencySelect = document.getElementById('goal-frequency'); 
-        
-        // --- MODAL Elements (Daily Reset) ---
-        const resetTasksBtn = document.getElementById('reset-tasks-btn');
-        const resetModal = document.getElementById('reset-modal');
-        const cancelResetBtn = document.getElementById('cancel-reset-btn');
-        const confirmResetBtn = document.getElementById('confirm-reset-btn');
-        const deleteIncompleteCheckbox = document.getElementById('delete-incomplete');
-        const currentScoreModalEl = document.getElementById('current-score-modal');
-        
-        // --- MODAL Elements (Master Reset) ---
-        const masterResetBtn = document.getElementById('master-reset-btn');
-        const masterResetModal = document.getElementById('master-reset-modal');
-        const cancelMasterResetBtn = document.getElementById('cancel-master-reset-btn');
-        const confirmMasterResetBtn = document.getElementById('confirm-master-reset-btn');
-        
-        // --- MODAL Elements (Message Box) ---
-        const messageBoxEl = document.getElementById('message-box');
-        const messageTitleEl = document.getElementById('message-title');
-        const messageContentEl = document.getElementById('message-content');
-        const messageCloseBtn = document.getElementById('message-close-btn');
-        
-        
-        // --- Onboarding/Welcome Card HTML (FIXED: **Value-Weighted Scoring** changed to <strong>) ---
-        const welcomeCardHTML = `
-            <div id="welcome-card" class="p-6 bg-indigo-50 border-2 border-indigo-200 rounded-xl shadow-lg space-y-3">
-                <h3 class="text-xl font-bold text-indigo-700 flex items-center">
-                    <i class="fas fa-hand-sparkles mr-2"></i> Welcome! Let's Get Started.
-                </h3>
-                <p class="text-gray-700">This is your personal productivity engine, based on <strong>Value-Weighted Scoring</strong>.</p>
-                <ul class="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                    <li><strong class="text-indigo-600">Step 1:</strong> Click the <span class="font-mono text-xs bg-gray-200 p-1 rounded-md">Set Goal</span> button to define a Daily Target (we recommend 10 points).</li>
-                    <li><strong class="text-indigo-600">Step 2:</strong> Add your first task below (use 10 points for your "Eat the Frog" task!).</li>
-                </ul>
-                <button id="hide-welcome-btn" class="w-full text-sm mt-3 py-2 bg-indigo-300 text-indigo-900 rounded-lg hover:bg-indigo-400 font-semibold transition">
-                    Got It, Hide This Tip
-                </button>
-            </div>
-        `;
+        const isWithinLast7Days = (date) => {
+            const today = getDayStart(new Date());
+            const sevenDaysAgo = getDayStart(new Date());
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            return getDayStart(date) >= sevenDaysAgo && getDayStart(date) <= today;
+        };
 
-
-        // --- Utility Functions ---
-        
-        /**
-         * Custom message box function to replace alert()
-         * @param {string} title 
-         * @param {string} content 
-         * @param {string} colorClass - Tailwind color class for title/icon
-         */
-        function showMessageBox(title, content, colorClass = 'text-indigo-600') {
-            messageTitleEl.textContent = title;
-            messageTitleEl.className = `text-xl font-semibold mb-3 text-gray-800 flex items-center`;
-            messageTitleEl.innerHTML = `<i class="fas fa-info-circle mr-2 ${colorClass}"></i> ${title}`;
-            // Use innerHTML because content contains HTML tags (e.g., <strong>)
-            messageContentEl.innerHTML = content; 
-            messageBoxEl.classList.remove('hidden');
-        }
-
-        // Event listener for closing the message box
-        messageCloseBtn.addEventListener('click', () => {
-            messageBoxEl.classList.add('hidden');
-        });
-
-
-        /**
-         * Determines the Firestore path for a user's collection.
-         * Private data path: /artifacts/{appId}/users/{userId}/{collectionName}
-         * @param {string} collectionName 
-         * @returns {string} The full Firestore path.
-         */
-        function getUserCollectionPath(collectionName) {
-            return `artifacts/${appId}/users/${userId}/${collectionName}`;
-        }
-        
-        /**
-         * Calculates the total score from the provided list of tasks.
-         * NOTE: Only counts points from COMPLETED tasks.
-         * @param {Array<Object>} taskList - The array of task objects.
-         * @returns {number} The current total score (Daily points).
-         */
-        function calculateDailyScore(taskList) {
-            return taskList.filter(t => t.completed)
-                           .reduce((sum, t) => sum + (t.points || 0), 0);
-        }
-        
-        /**
-         * Calculates the total points of all INCOMPLETE tasks. This determines the budget usage.
-         * @param {Array<Object>} taskList - The array of task objects.
-         * @returns {number} The current total active points.
-         */
-        function calculateActiveTaskPoints(taskList) {
-            // Exclude the HIGH_VALUE_PHASE_2_POINTS from the current budget, 
-            // as they represent tasks that won't be completed in this version.
-            return taskList.filter(t => !t.completed && t.points !== HIGH_VALUE_PHASE_2_POINTS)
-                           .reduce((sum, t) => sum + (t.points || 0), 0);
-        }
-
-        // --- Date Calculation Utilities (unchanged) ---
-        function getWeekStart(date) {
-            const d = new Date(date);
-            d.setHours(0, 0, 0, 0); 
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
-            return new Date(d.setDate(diff));
-        }
-        function getMonthStart(date) {
-            const d = new Date(date);
-            const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-            monthStart.setHours(0, 0, 0, 0);
-            return monthStart;
-        }
-        function getYearStart(date) {
-            const d = new Date(date);
-            const yearStart = new Date(d.getFullYear(), 0, 1);
-            yearStart.setHours(0, 0, 0, 0);
-            return yearStart;
-        }
-        
-        /** * Calculates the score for the current week, month, and year based on history,
-         * PLUS the current day's score.
-         */
-        function calculatePeriodScores(history, dailyScore) {
-            const now = new Date();
-            const weekStart = getWeekStart(now);
-            const monthStart = getMonthStart(now);
-            const yearStart = getYearStart(now);
-            
-            let weeklyScore = dailyScore;
-            let monthlyScore = dailyScore;
-            let yearlyScore = dailyScore;
-
-            history.forEach(item => {
-                const itemDate = item.date?.toDate ? item.date.toDate() : new Date(item.date);
-                
-                // Only count scores from history if they were recorded BEFORE today.
-                // The current day's score is handled by 'dailyScore'.
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (itemDate < today) {
-                    if (itemDate >= weekStart) {
-                        weeklyScore += item.score;
-                    }
-                    if (itemDate >= monthStart) {
-                        monthlyScore += item.score;
-                    }
-                    if (itemDate >= yearStart) {
-                        yearlyScore += item.score;
-                    }
-                }
+        // --- Main Application Component (The App function MUST be defined before render) ---
+        const App = () => {
+            // --- State Management ---
+            const [db, setDb] = useState(null);
+            const [auth, setAuth] = useState(null);
+            const [userId, setUserId] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [tasks, setTasks] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [taskInput, setTaskInput] = useState({
+                description: '',
+                points: 10,
+                targetDate: '',
             });
+            const [userProfile, setUserProfile] = useState({
+                username: null,
+                dailyStreak: 0,
+                lastCompletionDate: null,
+                dailyGoal: 50,
+            });
+            const [message, setMessage] = useState(null);
 
-            return {
-                daily: dailyScore,
-                weekly: weeklyScore,
-                monthly: monthlyScore,
-                yearly: yearlyScore
+            // --- Message Box Component (Inline) ---
+            const MessageBox = ({ message }) => {
+                if (!message) return null;
+
+                const { title, body, type } = message;
+                const baseClass = "fixed bottom-4 right-4 p-4 rounded-lg shadow-xl transition-all duration-300 z-50";
+                let typeClass = '';
+
+                if (type === 'success') {
+                    typeClass = 'bg-green-100 border-l-4 border-green-500 text-green-700 border-l-8';
+                } else if (type === 'info') {
+                    typeClass = 'bg-blue-100 border-l-4 border-blue-500 text-blue-700 border-l-8';
+                } else {
+                    typeClass = 'bg-red-100 border-l-4 border-red-500 text-red-700 border-l-8';
+                }
+
+                return (
+                    <div className={`${baseClass} ${typeClass}`} role="alert">
+                        <p className="font-bold">{title}</p>
+                        <p>{body}</p>
+                    </div>
+                );
             };
-        }
-        
-        // --- Rendering Functions ---
-        
-        /**
-         * Updates the Task Budget display (bar, text, and button state).
-         */
-        function updateTaskBudgetDisplay() {
-            currentBudgetPoints = calculateActiveTaskPoints(tasks);
-            const usedPercentage = Math.min(100, (currentBudgetPoints / MAX_TASK_BUDGET) * 100);
-            
-            budgetUsedEl.textContent = `${currentBudgetPoints} / ${MAX_TASK_BUDGET} Pts`;
-            budgetBarEl.style.width = `${usedPercentage}%`;
-            
-            let statusText = 'Excellent capacity. Add more tasks!';
-            let barClass = 'bg-budget-ok';
-            let messageHidden = true;
 
-            if (usedPercentage >= 90) {
-                statusText = 'Budget critical! You are nearly full.';
-                barClass = 'bg-budget-critical';
-            } else if (usedPercentage >= 70) {
-                statusText = 'Budget warning. Prioritize carefully.';
-                barClass = 'bg-budget-warning';
-            }
-            
-            const isBudgetExceeded = currentBudgetPoints >= MAX_TASK_BUDGET;
+            // Helper to show a message and automatically clear it
+            const pushMessage = useCallback((title, body, type = 'error', duration = 4000) => {
+                setMessage({ title, body, type });
+                setTimeout(() => setMessage(null), duration);
+            }, []);
 
-            if (isBudgetExceeded) {
-                statusText = 'MAXIMUM CAPACITY REACHED. You must complete or delete tasks.';
-                messageHidden = false;
-                // Disable the add task button and make it look disabled
-                addTaskButton.disabled = true;
-                addTaskButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-                addTaskButton.classList.add('bg-gray-400', 'cursor-not-allowed');
-            } else {
-                // Re-enable button if it was disabled
-                addTaskButton.disabled = false;
-                addTaskButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-                addTaskButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-            }
+            // --- Firestore Path Helper ---
+            const getCollectionPath = useCallback((uid) => {
+                return `artifacts/${appId}/users/${uid}/tasks`;
+            }, []);
 
-            budgetStatusEl.textContent = statusText;
-            budgetBarEl.className = `h-3 rounded-full transition-all duration-500 ease-in-out ${barClass}`;
-            budgetMessageEl.classList.toggle('hidden', messageHidden);
+            const getUserProfileDocRef = useCallback((uid) => {
+                // Must ensure db is defined before calling doc()
+                if (!db) return null;
+                return doc(db, `artifacts/${appId}/users/${uid}/profile/info`);
+            }, [db]);
+
+
+            // --- User Profile, Streak, and Goal Logic ---
+
+            const saveUserProfile = useCallback(async (newUsername = userProfile.username, isSilent = false) => {
+                if (!isAuthReady || !userId || !db) return;
+
+                if (newUsername && newUsername.trim().length < 3 && !isSilent) {
+                    pushMessage("Validation Error", "Username must be at least 3 characters.", "error", 3000);
+                    return;
+                }
+
+                try {
+                    const docRef = getUserProfileDocRef(userId);
+                    if (!docRef) return;
+
+                    const dataToSave = {
+                        username: newUsername ? newUsername.trim() : userProfile.username,
+                        dailyStreak: userProfile.dailyStreak,
+                        lastCompletionDate: userProfile.lastCompletionDate,
+                        dailyGoal: userProfile.dailyGoal,
+                    };
+
+                    await setDoc(docRef, dataToSave, { merge: true });
+
+                    // Update local state
+                    setUserProfile(prev => ({
+                        ...prev,
+                        username: dataToSave.username,
+                        dailyStreak: dataToSave.dailyStreak,
+                        lastCompletionDate: dataToSave.lastCompletionDate,
+                        dailyGoal: dataToSave.dailyGoal,
+                    }));
+
+                    if (!isSilent) {
+                        pushMessage("Success", `Profile updated.`, "success", 3000);
+                    }
+                } catch (error) {
+                    console.error("Error saving user profile:", error);
+                    pushMessage("Error", "Failed to save user profile data.", "error");
+                }
+            }, [isAuthReady, userId, db, userProfile, getUserProfileDocRef, pushMessage]);
             
-            // Re-check the task input validation state based on budget and selection
-            checkTaskFormValidity();
-        }
-        
-        /**
-         * Checks if the task form should be enabled/disabled based on budget and selected points.
-         */
-        function checkTaskFormValidity() {
-            const selectedPoints = parseInt(taskPointsSelect.value, 10);
-            const isPhase2Task = selectedPoints === HIGH_VALUE_PHASE_2_POINTS;
-            
-            let isDisabled = false;
-            
-            if (currentBudgetPoints >= MAX_TASK_BUDGET) {
-                // Budget exceeded. Only allow the safety valve option (which is handled in submit)
-                if (!isPhase2Task) {
-                    isDisabled = true;
-                    // Provide visual feedback for non-Phase 2 tasks
-                    if (taskPointsSelect.value !== "") {
-                        budgetMessageEl.textContent = `Budget exceeded! To add this ${selectedPoints}-point task, complete or delete existing tasks first.`;
-                        budgetMessageEl.classList.remove('hidden');
+            // Streak maintenance check on load (part of loadUserProfile)
+            const maintainStreakOnLoad = (data) => {
+                let { dailyStreak, lastCompletionDate } = data;
+                
+                if (!lastCompletionDate) return data;
+                
+                const lastDate = new Date(lastCompletionDate);
+                const today = new Date();
+
+                if (isSameDay(lastDate, today) || isYesterday(lastDate)) {
+                    return data;
+                }
+                
+                const dayBeforeYesterday = getDayStart(new Date());
+                dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2); 
+                
+                if (lastDate < dayBeforeYesterday) {
+                    dailyStreak = 0;
+                    lastCompletionDate = null;
+                    return { ...data, dailyStreak: 0, lastCompletionDate: null };
+                }
+                return data;
+            };
+
+
+            const updateUserStreak = useCallback(async () => {
+                if (!isAuthReady || !userId) return;
+
+                const today = new Date();
+                const { lastCompletionDate, dailyStreak } = userProfile;
+
+                // 1. Check if a task was already completed today
+                if (lastCompletionDate && isSameDay(new Date(lastCompletionDate), today)) {
+                    return;
+                }
+
+                let newStreak = dailyStreak;
+
+                if (lastCompletionDate) {
+                    const lastDate = new Date(lastCompletionDate);
+
+                    if (isYesterday(lastDate)) {
+                        // Streak continues!
+                        newStreak += 1;
+                        pushMessage("Streak!", `Daily streak increased to ${newStreak} days!`, "success", 3000);
+                    } else {
+                        // Streak is broken (completion was before yesterday)
+                        newStreak = 1;
+                        pushMessage("New Streak!", "Started a new daily streak!", "info", 3000);
                     }
                 } else {
-                    // Allow Phase 2 selection, which will trigger the Safety Valve logic in the submit handler
-                    budgetMessageEl.classList.add('hidden');
+                    // First ever completion
+                    newStreak = 1;
+                    pushMessage("First Completion!", "You started your first daily streak!", "success", 3000);
                 }
-            } else {
-                 budgetMessageEl.classList.add('hidden');
-            }
-            
-            // Only disable the button if it's a regular task and the budget is exceeded
-            if (isDisabled) {
-                addTaskButton.disabled = true;
-                addTaskButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-                addTaskButton.classList.add('bg-gray-400', 'cursor-not-allowed');
-            } else {
-                // Allow submitting if it's a valid regular task or the Phase 2 task (to trigger the valve)
-                addTaskButton.disabled = false;
-                addTaskButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-                addTaskButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-            }
-        }
 
+                // Update the profile state and save
+                setUserProfile(prev => ({
+                    ...prev,
+                    dailyStreak: newStreak,
+                    lastCompletionDate: today.toISOString(),
+                }));
+                // Save silently as this is part of task completion flow
+                await saveUserProfile(userProfile.username, true); 
 
-        /**
-         * Updates the dynamic goal display based on the selected period.
-         */
-        function updateDynamicGoalDisplay() {
-            const dailyScore = calculateDailyScore(tasks);
-            const periodScores = calculatePeriodScores(scoreHistory, dailyScore);
+            }, [isAuthReady, userId, userProfile, saveUserProfile, pushMessage]);
             
-            const currentScore = periodScores[currentPeriod];
-            const target = goals[currentPeriod];
-            const percentage = target > 0 ? Math.min(100, Math.floor((currentScore / target) * 100)) : 0;
-            const periodTitle = currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1);
-            
-            const barColor = percentage >= 100 ? 'bg-green-500' : `bg-${currentPeriod}`;
-            const cardColor = `bg-${currentPeriod}`;
-            const textColor = percentage >= 100 ? 'text-green-600' : `text-${currentPeriod}`;
+            const loadUserProfile = useCallback(async (uid) => {
+                if (!db) return;
+                try {
+                    const docRef = getUserProfileDocRef(uid);
+                    if (!docRef) return; // Safegaurd
 
-            // 1. Update Goal Title and Target Text
-            goalCardEl.className = `p-6 rounded-xl shadow-lg transform transition-all duration-300 text-white ${cardColor}`;
-            goalTitleEl.textContent = `${periodTitle} Goal`;
-            goalTargetTextEl.innerHTML =
-                `${currentScore} / ${target > 0 ? target : 'N/A'} <span class="text-lg font-medium opacity-80">Points</span>`;
+                    // NOTE: Calling getDoc from the global firebase object
+                    const docSnap = await firebase.firestore.getDoc(docRef);
+                    
+                    let data = { 
+                        username: null, 
+                        dailyStreak: 0, 
+                        lastCompletionDate: null, 
+                        dailyGoal: 50 
+                    };
 
-            // 2. Update Progress Bar
-            progressPercentageEl.textContent = `${percentage}%`;
-            progressPercentageEl.className = `font-bold text-lg ${textColor}`;
-            
-            progressBarEl.style.width = `${percentage}%`;
-            progressBarEl.className = `h-3 rounded-full transition-all duration-500 ease-in-out ${barColor}`;
-            
-            // 3. Update Progress Status
-            if (target === 0) {
-                progressStatusEl.textContent = `Set a ${currentPeriod} goal to track progress!`;
-                progressStatusEl.classList.remove('text-green-600', 'text-red-600');
-                progressStatusEl.classList.add('text-gray-600');
-            } else if (percentage >= 100) {
-                progressStatusEl.textContent = `Goal Achieved! You exceeded your target by ${currentScore - target} points.`;
-                progressStatusEl.classList.add('text-green-600');
-                progressStatusEl.classList.remove('text-red-600', 'text-gray-600');
-            } else {
-                 progressStatusEl.textContent = `You need ${target - currentScore} more points to reach your ${currentPeriod} goal.`;
-                 progressStatusEl.classList.add('text-red-600');
-                 progressStatusEl.classList.remove('text-green-600', 'text-gray-600');
-            }
+                    if (docSnap.exists()) {
+                        data = { ...data, ...docSnap.data() };
+                    }
+                    
+                    // Streak maintenance logic
+                    const maintainedData = maintainStreakOnLoad(data);
+                    setUserProfile(maintainedData);
+                    
+                    // If streak was reset, save the profile immediately.
+                    if (maintainedData.dailyStreak !== data.dailyStreak) {
+                        // Must call the local save function, not the one from dependencies if it relies on local state update
+                        await setDoc(docRef, maintainedData, { merge: true });
+                    }
 
-            // 4. Update Period Selector Styling (Active Tab)
-            Object.values(periodBtns).forEach(button => {
-                const period = button.dataset.period;
-                if (period === currentPeriod) {
-                    // Active style
-                    button.classList.add('bg-indigo-500', 'text-white', 'shadow-md');
-                    button.classList.remove('text-gray-700', 'hover:bg-gray-200');
-                } else {
-                    // Inactive style
-                    button.classList.add('text-gray-700', 'hover:bg-gray-200');
-                    button.classList.remove('bg-indigo-500', 'text-white', 'shadow-md');
+                } catch (error) {
+                    console.warn("Could not load user profile:", error);
                 }
-            });
-            
-            // 5. Update Daily Score in the Daily Reset Modal
-            currentScoreModalEl.textContent = dailyScore;
-        }
+            }, [db, getUserProfileDocRef]);
 
-        /**
-         * Renders the list of historical scores.
-         */
-        function renderHistoryList() {
-            if (scoreHistory.length === 0) {
-                historyListEl.innerHTML = '';
-                noHistoryMessageEl.classList.remove('hidden');
-                return;
-            }
-            
-            noHistoryMessageEl.classList.add('hidden');
-            
-            // History is already sorted by date descending in the listener
-            
-            historyListEl.innerHTML = scoreHistory.map(item => {
-                const date = item.date?.toDate ? item.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unknown Date';
-                const score = item.score || 0;
-                const goalAchieved = item.goalAchieved;
-                const goal = item.dailyGoal || 0;
 
-                const icon = goalAchieved ? '<i class="fas fa-trophy text-yellow-500 mr-2"></i>' : '<i class="fas fa-times-circle text-red-500 mr-2"></i>';
-                const colorClass = goalAchieved ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300';
-                const textClass = goalAchieved ? 'text-green-800' : 'text-red-800';
+            // --- Firebase Initialization and Auth Effect ---
+            useEffect(() => {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing.");
+                    return;
+                }
 
-                return `
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl shadow-sm border ${colorClass} transition duration-150 hover:shadow-md">
-                        <div class="flex flex-col mb-2 sm:mb-0">
-                            <span class="text-sm font-semibold text-gray-700 whitespace-nowrap">${date}</span>
-                            <span class="text-xs font-medium ${textClass} flex items-center mt-1">
-                                ${icon} Daily Goal: ${goalAchieved ? 'Achieved' : 'Missed'} (Target: ${goal} pts)
-                            </span>
+                try {
+                    // Initialize the app and services (using global firebase object)
+                    const app = firebase.initializeApp(firebaseConfig);
+                    const firestoreDb = firebase.firestore.getFirestore(app);
+                    const firestoreAuth = firebase.auth.getAuth(app);
+
+                    setDb(firestoreDb);
+                    setAuth(firestoreAuth);
+                    firebase.firestore.setLogLevel('Debug'); // Enable Firestore debug logs
+
+                    // Monitor Auth State (using global firebase object)
+                    const unsubscribe = firebase.auth.onAuthStateChanged(firestoreAuth, async (user) => {
+                        if (user) {
+                            setUserId(user.uid);
+                            setIsAuthReady(true);
+                        } else if (initialAuthToken) {
+                            await firebase.auth.signInWithCustomToken(firestoreAuth, initialAuthToken);
+                        } else {
+                            // Fallback to anonymous sign-in
+                            const anonUser = await firebase.auth.signInAnonymously(firestoreAuth);
+                            setUserId(anonUser.user.uid);
+                            setIsAuthReady(true);
+                        }
+                    });
+
+                    return () => unsubscribe();
+
+                } catch (error) {
+                    console.error("Firebase initialization error:", error);
+                    pushMessage("Setup Error", "Failed to initialize Firebase.", "error");
+                }
+            }, [pushMessage]);
+
+
+            // --- Load Profile on Auth Ready ---
+            useEffect(() => {
+                if (isAuthReady && userId && db) {
+                    loadUserProfile(userId);
+                }
+            }, [isAuthReady, userId, db, loadUserProfile]);
+
+
+            // --- Task Listener Effect (Real-time updates) ---
+            useEffect(() => {
+                if (!db || !userId) return;
+
+                setIsLoading(true);
+
+                const tasksRef = collection(db, getCollectionPath(userId));
+                const taskQuery = query(tasksRef);
+
+                const unsubscribe = onSnapshot(taskQuery, (snapshot) => {
+                    const fetchedTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setTasks(fetchedTasks);
+                    setIsLoading(false);
+                }, (error) => {
+                    console.error("Firestore snapshot error:", error);
+                    pushMessage("Data Error", "Failed to fetch real-time tasks.", "error");
+                    setIsLoading(false);
+                });
+
+                return () => unsubscribe();
+            }, [db, userId, getCollectionPath, pushMessage]);
+
+
+            // --- Firestore Operations (Tasks) ---
+
+            const addTask = useCallback(async () => {
+                if (!isAuthReady || !userId || !db) {
+                    pushMessage("Auth Error", "Authentication not ready. Please wait.", "error");
+                    return;
+                }
+
+                const { description, points, targetDate } = taskInput;
+                if (!description || !points) {
+                    pushMessage("Input Error", "Please provide a description and points.", "error");
+                    return;
+                }
+
+                try {
+                    const colRef = collection(db, getCollectionPath(userId));
+                    await addDoc(colRef, {
+                        description,
+                        points: parseInt(points, 10),
+                        targetDate: targetDate || null,
+                        isComplete: false,
+                        createdAt: new Date().toISOString(),
+                        completionDate: null,
+                        scoreEarned: 0,
+                        userId: userId,
+                    });
+                    pushMessage("Success", "Task added successfully!", "success", 2000);
+                    setTaskInput({ description: '', points: 10, targetDate: '' }); // Reset form
+                } catch (error) {
+                    console.error("Error adding document: ", error);
+                    pushMessage("Error", "Failed to add task.", "error");
+                }
+            }, [isAuthReady, userId, db, taskInput, getCollectionPath, pushMessage]);
+
+
+            const toggleTaskCompletion = useCallback(async (taskId, isComplete, points) => {
+                if (!isAuthReady || !userId || !db) return;
+                try {
+                    const taskRef = doc(db, getCollectionPath(userId), taskId);
+                    const completionDate = isComplete ? new Date().toISOString() : null;
+                    const score = isComplete ? points : 0;
+
+                    await updateDoc(taskRef, {
+                        isComplete: isComplete,
+                        completionDate: completionDate,
+                        scoreEarned: score
+                    });
+
+                    if (isComplete) {
+                        await updateUserStreak();
+                    }
+
+                } catch (error) {
+                    console.error("Error updating document: ", error);
+                    pushMessage("Error", "Failed to update task status.", "error");
+                }
+            }, [isAuthReady, userId, db, getCollectionPath, updateUserStreak, pushMessage]);
+
+
+            const deleteTask = useCallback(async (taskId) => {
+                if (!isAuthReady || !userId || !db) return;
+                try {
+                    const taskRef = doc(db, getCollectionPath(userId), taskId);
+                    await deleteDoc(taskRef);
+                    pushMessage("Removed", "Task deleted.", "info", 2000);
+                } catch (error) {
+                    console.error("Error deleting document: ", error);
+                    pushMessage("Error", "Failed to delete task.", "error");
+                }
+            }, [isAuthReady, userId, db, getCollectionPath, pushMessage]);
+
+            // --- Task Input Form Handler ---
+            const handleFormSubmit = (e) => {
+                e.preventDefault();
+                addTask();
+            };
+
+            // --- Metrics Calculation (Memoized) ---
+            const metrics = useMemo(() => {
+                let totalLifetimeScore = 0;
+                let totalTasksCompleted = 0;
+                let todayScore = 0;
+                let weekScore = 0;
+
+                const today = new Date();
+
+                tasks.forEach(task => {
+                    if (task.isComplete) {
+                        const points = parseInt(task.points, 10) || 0;
+                        totalLifetimeScore += points;
+                        totalTasksCompleted += 1;
+
+                        if (task.completionDate) {
+                            const completionTime = new Date(task.completionDate);
+
+                            if (isSameDay(completionTime, today)) {
+                                todayScore += points;
+                            }
+
+                            if (isWithinLast7Days(completionTime)) {
+                                weekScore += points;
+                            }
+                        }
+                    }
+                });
+
+                const vvvRatio = totalTasksCompleted > 0 ? (totalLifetimeScore / totalTasksCompleted) : 0;
+
+                return {
+                    totalLifetimeScore,
+                    totalTasksCompleted,
+                    todayScore,
+                    weekScore,
+                    vvvRatio: vvvRatio.toFixed(1)
+                };
+            }, [tasks]);
+
+
+            // --- User Profile and Goal Setter Handlers ---
+            const handleUsernameSet = () => {
+                if (!isAuthReady || !userId) {
+                    pushMessage("Wait", "Authentication is still loading. Please wait a moment.", "info", 2000);
+                    return;
+                }
+
+                const currentName = userProfile.username || '';
+                // Using window.prompt since custom modals for user input are overkill here
+                const newName = window.prompt(`Enter your desired username (Current: ${currentName || 'None'}).`);
+
+                if (newName !== null && newName.trim()) {
+                    saveUserProfile(newName.trim());
+                } else if (newName !== null) {
+                    pushMessage("Input Error", "Username cannot be empty.", "error", 2000);
+                }
+            };
+
+            const handleDailyGoalSet = () => {
+                if (!isAuthReady || !userId) {
+                    pushMessage("Wait", "Authentication is still loading. Please wait a moment.", "info", 2000);
+                    return;
+                }
+
+                const currentGoal = userProfile.dailyGoal || 50;
+                const newGoalStr = window.prompt(`Enter your daily score goal (Current: ${currentGoal} points). Enter 0 to disable.`);
+
+                if (newGoalStr !== null) {
+                    const newGoal = parseInt(newGoalStr.trim(), 10);
+                    if (!isNaN(newGoal) && newGoal >= 0) {
+                        const updatedProfile = { ...userProfile, dailyGoal: newGoal };
+                        setUserProfile(updatedProfile);
+                        // Using saveUserProfile with the current username but silence feedback
+                        saveUserProfile(updatedProfile.username, false); 
+                        pushMessage("Goal Set", `Daily score goal updated to ${newGoal} points!`, "success", 3000);
+                    } else {
+                        pushMessage("Validation Error", "Please enter a valid number (0 or higher).", "error", 3000);
+                    }
+                }
+            };
+
+            // --- Components ---
+
+            const TaskItem = ({ task }) => {
+                const isCompleted = task.isComplete;
+                const points = parseInt(task.points, 10);
+                const targetDateText = task.targetDate ? new Date(task.targetDate).toLocaleDateString() : 'No Target';
+
+                const itemClass = `flex items-center p-3 rounded-xl border shadow-sm transition-all duration-200 ${
+                    isCompleted 
+                        ? 'bg-green-50 border-green-200 line-through text-gray-500 hover:bg-green-100' 
+                        : points === 10 
+                            ? 'bg-red-50 border-red-200 hover:bg-red-100' 
+                            : points === 5 
+                                ? 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100' 
+                                : 'bg-white border-gray-200 hover:shadow-md'
+                }`;
+                
+                const pointColor = isCompleted ? 'text-gray-400' : 'text-indigo-600';
+
+                return (
+                    <div className={itemClass}>
+                        <input
+                            type="checkbox"
+                            checked={isCompleted}
+                            onChange={(e) => toggleTaskCompletion(task.id, e.target.checked, points)}
+                            className="form-checkbox h-5 w-5 text-indigo-600 rounded mr-4 focus:ring-indigo-500 transition duration-150 ease-in-out cursor-pointer"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-base font-medium ${isCompleted ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                                {task.description}
+                            </p>
+                            <p className={`text-xs ${isCompleted ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <span className={`font-bold mr-2 ${pointColor}`}>{points} Pts</span> | 
+                                {isCompleted 
+                                    ? ` Completed: ${new Date(task.completionDate).toLocaleDateString()}` 
+                                    : ` Target: ${targetDateText}`
+                                }
+                            </p>
                         </div>
-                        <div class="text-2xl font-extrabold text-indigo-600 flex items-center">
-                            ${score} <span class="text-base font-semibold ml-1 text-gray-600">pts</span>
+
+                        <button
+                            onClick={() => deleteTask(task.id)}
+                            className="ml-4 p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-100 transition duration-150"
+                            title="Delete Task"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-3 0h10"></path>
+                            </svg>
+                        </button>
+                    </div>
+                );
+            };
+
+            const MetricsDashboard = () => {
+                const { todayScore, vvvRatio, weekScore, totalLifetimeScore } = metrics;
+                const dailyGoal = userProfile.dailyGoal;
+                const goalMet = dailyGoal > 0 && todayScore >= dailyGoal;
+
+                let goalCardClass = 'metric-card p-5 rounded-xl text-center cursor-pointer transition duration-150 hover:shadow-lg';
+                if (dailyGoal > 0) {
+                    goalCardClass += goalMet ? ' bg-emerald-600 text-white' : ' bg-indigo-100 text-indigo-800 hover:bg-indigo-200';
+                } else {
+                    goalCardClass += ' bg-gray-100 text-gray-500 hover:bg-gray-200';
+                }
+
+                return (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
+                        {/* Today's Score (Primary Metric) */}
+                        <div className="metric-card bg-indigo-600 text-white p-5 rounded-xl text-center">
+                            <p className="text-sm font-medium opacity-80">Today's Score</p>
+                            <p className="text-4xl font-bold mt-1">{todayScore}</p>
+                        </div>
+                        
+                        {/* Daily Goal Progress */}
+                        <div 
+                            className={goalCardClass} 
+                            title={dailyGoal > 0 ? `Daily Goal: ${dailyGoal} points` : "Daily Goal Disabled. Click to set."}
+                            onClick={handleDailyGoalSet}
+                        >
+                            <p className="text-sm font-medium" id="daily-goal-title">Daily Goal Progress</p>
+                            <p className="text-3xl font-bold mt-1">
+                                {dailyGoal > 0 ? `${todayScore} / ${dailyGoal}` : 'Disabled'}
+                            </p>
+                        </div>
+                        
+                        {/* Average Task Value (VvV Ratio - Quality Metric) */}
+                        <div className="metric-card bg-white p-5 rounded-xl text-center border-b-4 border-amber-500">
+                            <p className="text-sm font-medium text-gray-600">Avg Task Value (VvV)</p>
+                            <p className="text-3xl font-bold text-amber-600 mt-1">{vvvRatio}</p>
+                        </div>
+                        
+                        {/* Last 7 Days Score */}
+                        <div className="metric-card bg-white p-5 rounded-xl text-center">
+                            <p className="text-sm font-medium text-gray-600">7-Day Score</p>
+                            <p className="text-3xl font-bold text-gray-800 mt-1">{weekScore}</p>
+                        </div>
+                        
+                        {/* Total Lifetime Score */}
+                        <div className="metric-card bg-white p-5 rounded-xl text-center">
+                            <p className="text-sm font-medium text-gray-600">Lifetime Score</p>
+                            <p className="text-3xl font-bold text-gray-800 mt-1">{totalLifetimeScore}</p>
                         </div>
                     </div>
-                `;
-            }).join('');
-        }
+                );
+            };
 
-        /**
-         * Renders the task list to the DOM, applying the current filter.
-         */
-        function renderTasks() {
-            taskListEl.innerHTML = '';
-            
-            // Apply filter if active
-            const tasksToRender = isFilterActive 
-                ? tasks.filter(t => t.points === 10)
-                : tasks;
-
-            // Sort by points (highest first) for visual priority, then by completion status
-            tasksToRender.sort((a, b) => {
-                // Completed tasks always go to the bottom
-                if (a.completed && !b.completed) return 1;
-                if (!a.completed && b.completed) return -1;
+            const TaskList = ({ tasks, isLoading }) => {
                 
-                // Higher points first (Eat the Frog prioritization)
-                return (b.points || 0) - (a.points || 0); 
-            });
+                if (isLoading) {
+                    return <p className="text-center text-gray-500 py-8">Loading tasks and profile...</p>;
+                }
 
-            // --- NEW: PHASE 1 ONBOARDING/EMPTY STATE LOGIC ---
-            if (tasks.length === 0 && scoreHistory.length === 0 && !uiState.welcomeHidden) {
-                // Initial load state: Show welcome card
-                taskListEl.innerHTML = welcomeCardHTML;
-                document.getElementById('hide-welcome-btn')?.addEventListener('click', hideWelcomeCard);
-                noTasksMessageEl.classList.add('hidden');
-                loadingMessageEl.classList.add('hidden');
-                updateTaskBudgetDisplay();
-                return; // Exit as we showed the welcome card instead of the list
-            }
-            
-            // Now proceed with normal rendering if tasks exist or welcome is dismissed
-            
-            if (tasksToRender.length === 0) {
-                // If tasks array is empty OR filter cleared the list
-                noTasksMessageEl.classList.remove('hidden');
-                taskListEl.innerHTML = ''; // Clear any previous content
-            } else {
-                noTasksMessageEl.classList.add('hidden');
-                
-                tasksToRender.forEach(task => {
-                    const taskEl = createTaskElement(task);
-                    taskListEl.appendChild(taskEl);
+                if (tasks.length === 0) {
+                    return <p className="text-center text-gray-500 py-4">No tasks yet! Add one above.</p>;
+                }
+
+                // Sort tasks: Incomplete first, then by points (higher points first)
+                const sortedTasks = [...tasks].sort((a, b) => {
+                    if (a.isComplete !== b.isComplete) {
+                        return a.isComplete ? 1 : -1;
+                    }
+                    return b.points - a.points;
                 });
-            }
-            
-            // Re-render budget display after task list changes
-            updateTaskBudgetDisplay();
-        }
 
-        /**
-         * Creates a single task element for the DOM.
-         */
-        function createTaskElement(task) {
-            const isCompleted = task.completed;
-            const points = task.points || 1;
-            const isPhase2 = points === HIGH_VALUE_PHASE_2_POINTS;
-            
-            let bgColor, pointColor, pointText;
+                return (
+                    <div className="space-y-3">
+                        {sortedTasks.map(task => (
+                            <TaskItem key={task.id} task={task} />
+                        ))}
+                    </div>
+                );
+            };
 
-            if (isPhase2) {
-                bgColor = 'bg-indigo-100 border-indigo-300';
-                pointColor = 'text-indigo-600';
-                pointText = 'Future';
-            } else if (isCompleted) {
-                bgColor = 'bg-green-100 border-green-300';
-                pointColor = 'text-gray-500';
-                pointText = points;
-            } else {
-                bgColor = points === 10 ? 'bg-red-100 border-red-300' :
-                          points === 5 ? 'bg-yellow-100 border-yellow-300' :
-                          'bg-gray-100 border-gray-300';
-                pointColor = points === 10 ? 'text-red-600' :
-                             points === 5 ? 'text-yellow-600' :
-                             'text-gray-600';
-                pointText = points;
-            }
+            // --- Main Render ---
+            return (
+                <div className="min-h-screen p-4 sm:p-8 bg-gray-50">
+                    <div className="max-w-6xl mx-auto">
+                        <h1 className="text-4xl font-extrabold text-gray-900 mb-6 text-center">
+                            Progress Score Tracker (SBPT)
+                        </h1>
+                        <p className="text-center text-gray-600 mb-8">
+                            Track anything: Academics, Work, Fitness. Focus on high-value tasks!
+                        </p>
 
-            const taskItem = document.createElement('div');
-            taskItem.className = `flex items-center justify-between p-4 rounded-xl shadow-sm transition duration-200 ${bgColor}`;
-            taskItem.dataset.id = task.id;
+                        {/* Metrics Dashboard */}
+                        <MetricsDashboard />
 
-            // Phase 2 tasks are not meant to be completable in this version, 
-            // but we allow deletion for cleanup.
-            const checkboxDisabled = isPhase2 ? 'disabled' : '';
-            const completionClass = isCompleted ? 'line-through text-gray-500' : 'font-medium';
-            const completionIcon = isPhase2 ? '<i class="fas fa-hammer mr-1"></i>' : '<i class="fas fa-star mr-1"></i>';
+                        {/* Task Input and List Container */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Add New Task Form */}
+                            <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit">
+                                <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">Add New Task</h2>
+                                <form onSubmit={handleFormSubmit} className="space-y-4">
+                                    <div>
+                                        <label htmlFor="task-description" className="block text-sm font-medium text-gray-700">Task/Goal</label>
+                                        <input
+                                            type="text"
+                                            id="task-description"
+                                            required
+                                            value={taskInput.description}
+                                            onChange={(e) => setTaskInput(prev => ({ ...prev, description: e.target.value }))}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="task-points" className="block text-sm font-medium text-gray-700">Point Value (1, 5, or 10)</label>
+                                        <select
+                                            id="task-points"
+                                            required
+                                            value={taskInput.points}
+                                            onChange={(e) => setTaskInput(prev => ({ ...prev, points: parseInt(e.target.value, 10) }))}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            <option value={10}>10 - High Value / Crucial</option>
+                                            <option value={5}>5 - Medium Value / Standard</option>
+                                            <option value={1}>1 - Low Value / Maintenance</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="target-date" className="block text-sm font-medium text-gray-700">Target Date</label>
+                                        <input
+                                            type="date"
+                                            id="target-date"
+                                            value={taskInput.targetDate}
+                                            onChange={(e) => setTaskInput(prev => ({ ...prev, targetDate: e.target.value }))}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <button type="submit" className="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                                        Add Task
+                                    </button>
+                                </form>
+                            </div>
 
-
-            taskItem.innerHTML = `
-                <div class="flex items-center flex-grow min-w-0">
-                    <input type="checkbox" ${isCompleted ? 'checked' : ''} ${checkboxDisabled}
-                           class="task-toggle h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 ${isPhase2 ? 'cursor-not-allowed' : 'cursor-pointer'} mr-4">
+                            {/* Task List */}
+                            <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                                <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2 flex justify-between items-center">
+                                    Active Tasks
+                                    {/* Profile and Streak Display */}
+                                    <div className="flex items-center space-x-3">
+                                        {/* Daily Streak */}
+                                        <span className="text-sm font-semibold text-emerald-600 flex items-center bg-emerald-100 px-3 py-1 rounded-full shadow-md">
+                                            🔥 {userProfile.dailyStreak}
+                                        </span>
+                                        {/* Username Display/Set Button */}
+                                        <button 
+                                            onClick={handleUsernameSet}
+                                            className={`text-xs font-medium px-3 py-1 rounded-full transition duration-150 shadow-md ${
+                                                userProfile.username 
+                                                    ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-semibold' 
+                                                    : userId 
+                                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-700' 
+                                                        : 'bg-gray-100 text-gray-500'
+                                            }`}
+                                        >
+                                            {userProfile.username 
+                                                ? `Welcome, ${userProfile.username}` 
+                                                : userId 
+                                                    ? `Set Username (ID: ${userId.substring(0, 5)}...)`
+                                                    : 'Loading User...'
+                                            }
+                                        </button>
+                                    </div>
+                                </h2>
+                                <TaskList tasks={tasks} isLoading={isLoading || !isAuthReady} />
+                            </div>
+                        </div>
+                    </div>
                     
-                    <span class="flex-grow min-w-0 truncate text-gray-800 ${completionClass}">
-                        ${task.name}
-                    </span>
-                    
-                    <span class="flex-shrink-0 ml-4 font-bold text-lg ${pointColor} flex items-center">
-                        ${pointText} ${completionIcon}
-                    </span>
+                    {/* Custom Message Box */}
+                    <MessageBox message={message} />
                 </div>
-                
-                <button class="task-delete-btn ml-4 text-gray-400 hover:text-red-500 transition duration-150 p-1 rounded-full">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            `;
-
-            // Attach event listeners to the created elements
-            if (!isPhase2) {
-                taskItem.querySelector('.task-toggle').addEventListener('change', (e) => toggleTaskCompletion(task.id, e.target.checked));
-            }
-            taskItem.querySelector('.task-delete-btn').addEventListener('click', () => deleteTask(task.id));
-
-            return taskItem;
-        }
-        
-        /**
-         * Switches the main view between the Task Tracker and the Score History.
-         */
-        function switchView(viewName) {
-            if (viewName === 'tracker') {
-                trackerViewEl.classList.remove('hidden');
-                historyViewEl.classList.add('hidden');
-                navTrackerBtn.classList.add('bg-indigo-600', 'text-white');
-                navTrackerBtn.classList.remove('bg-gray-300', 'text-gray-800', 'hover:bg-gray-400');
-                navHistoryBtn.classList.remove('bg-indigo-600', 'text-white');
-                navHistoryBtn.classList.add('bg-gray-300', 'text-gray-800', 'hover:bg-gray-400');
-            } else if (viewName === 'history') {
-                trackerViewEl.classList.add('hidden');
-                historyViewEl.classList.remove('hidden');
-                navHistoryBtn.classList.add('bg-indigo-600', 'text-white');
-                navHistoryBtn.classList.remove('bg-gray-300', 'text-gray-800', 'hover:bg-gray-400');
-                navTrackerBtn.classList.remove('bg-indigo-600', 'text-white');
-                navTrackerBtn.classList.add('bg-gray-300', 'text-gray-800', 'hover:bg-gray-400');
-                renderHistoryList(); // Render the history content when switching to this view
-            }
-        }
-
-        // --- Firestore Interaction Functions ---
-        
-        /**
-         * Persists the welcome card dismissal state to Firestore.
-         */
-        async function hideWelcomeCard() {
-            if (!db || userId === 'anonymous') return;
-            try {
-                const uiDocRef = doc(db, getUserCollectionPath('settings'), 'ui_state');
-                await setDoc(uiDocRef, { welcomeHidden: true }, { merge: true });
-                // Note: The listener will update uiState and call renderTasks again.
-            } catch (e) {
-                console.error("Error hiding welcome card state:", e);
-            }
-        }
-
-        /**
-         * Sets up real-time listeners for tasks, goals, and score history.
-         */
-        function setupFirestoreListeners() {
-            if (!db || userId === 'anonymous') return;
-            
-            loadingMessageEl.classList.remove('hidden');
-
-            // 1. Task Listener
-            const tasksRef = collection(db, getUserCollectionPath('tasks'));
-            onSnapshot(tasksRef, (snapshot) => {
-                tasks = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                
-                renderTasks();
-                updateDynamicGoalDisplay(); // Update display based on new task completion
-                updateTaskBudgetDisplay(); // Recalculate and display budget
-                loadingMessageEl.classList.add('hidden');
-            }, (error) => {
-                console.error("Error listening to tasks:", error);
-                loadingMessageEl.textContent = "Error loading tasks.";
-            });
-
-            // 2. Multi-Frequency Goal Listener
-            const goalDocRef = doc(db, getUserCollectionPath('settings'), 'goals');
-            onSnapshot(goalDocRef, (docSnapshot) => {
-                if (docSnapshot.exists()) {
-                    const data = docSnapshot.data();
-                    // Update all goal variables in the global 'goals' object
-                    goals.daily = parseInt(data.dailyGoal, 10) || 0;
-                    goals.weekly = parseInt(data.weeklyGoal, 10) || 0;
-                    goals.monthly = parseInt(data.monthlyGoal, 10) || 0;
-                    goals.yearly = parseInt(data.yearlyGoal, 10) || 0;
-                    
-                    updateDynamicGoalDisplay(); // Call UI update after goals change
-                } else {
-                    goals.daily = 0;
-                    goals.weekly = 0;
-                    goals.monthly = 0;
-                    goals.yearly = 0;
-                    updateDynamicGoalDisplay();
-                }
-            }, (error) => {
-                console.error("Error listening to goals:", error);
-            });
-            
-            // 3. Score History Listener
-            const historyRef = collection(db, getUserCollectionPath('scoreHistory'));
-            onSnapshot(historyRef, (snapshot) => {
-                scoreHistory = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                
-                // Sort by date descending in memory
-                scoreHistory.sort((a, b) => {
-                    const dateA = a.date?.toDate ? a.date.toDate().getTime() : 0;
-                    const dateB = b.date?.toDate ? b.date.toDate().getTime() : 0;
-                    return dateB - dateA; // Latest scores first
-                });
-                
-                updateDynamicGoalDisplay(); // Update display as history affects long-term goals
-                renderHistoryList(); 
-
-            }, (error) => {
-                console.error("Error listening to score history:", error);
-            });
-            
-            // 4. UI State Listener (for UX states like welcome message dismissal)
-            const uiDocRef = doc(db, getUserCollectionPath('settings'), 'ui_state');
-            onSnapshot(uiDocRef, (docSnapshot) => {
-                if (docSnapshot.exists()) {
-                    uiState.welcomeHidden = docSnapshot.data().welcomeHidden || false;
-                }
-                // Re-render tasks to display/hide the welcome card if state changes
-                renderTasks();
-            }, (error) => {
-                console.error("Error listening to UI state:", error);
-            });
-        }
-
-        /**
-         * Adds a new task to Firestore, respecting the task budget.
-         */
-        async function addTask(name, points) {
-            if (!db || userId === 'anonymous') return;
-
-            const pointValue = parseInt(points, 10);
-            
-            // --- SAFETY VALVE CHECK (High-Value / Phase 2 Task) ---
-            if (pointValue === HIGH_VALUE_PHASE_2_POINTS) {
-                // Do not save to active tasks. Show the "Safety Valve" message instead.
-                showMessageBox(
-                    "Acknowledged: Future Project", 
-                    `<p>Thank you for submitting <strong>${name}</strong>! This project is acknowledged.</p>
-                    <p class="mt-3">To maintain focus, the tracker is currently optimized for tasks worth 1-10 points. Please focus on completing your current, smaller tasks first!</p>
-                    <p class="mt-3 text-sm text-indigo-500 font-semibold">When your active task budget is clear, you will be able to start on these bigger projects!</p>`
-                );
-                return;
-            }
-            // --- END SAFETY VALVE CHECK ---
-
-
-            // --- REGULAR BUDGET CHECK ---
-            if (currentBudgetPoints + pointValue > MAX_TASK_BUDGET) {
-                // Show a message to the user explaining why it failed
-                budgetMessageEl.textContent = `Error: Adding this ${pointValue}-point task would exceed your ${MAX_TASK_BUDGET}-point budget. Complete or delete tasks first!`;
-                budgetMessageEl.classList.remove('hidden');
-                showMessageBox(
-                    "Budget Limit Reached", 
-                    `<p>You are at your <strong>${MAX_TASK_BUDGET}-point active limit</strong> for unfinished tasks.</p>
-                    <p class="mt-3">To add <strong>${name} (${pointValue} Pts)</strong>, please complete or delete existing tasks to free up budget space and maintain your focus.</p>`,
-                    'text-red-600'
-                );
-                return; 
-            }
-            // --- END REGULAR BUDGET CHECK ---
-
-            try {
-                const tasksRef = collection(db, getUserCollectionPath('tasks'));
-                await addDoc(tasksRef, {
-                    name: name,
-                    points: pointValue,
-                    completed: false,
-                    createdAt: serverTimestamp(),
-                    userId: userId 
-                });
-                console.log("Task added successfully.");
-                showMessageBox("Task Added!", `<strong>${name}</strong> was added to your list. It will use <strong>${pointValue}</strong> of your budget.`, 'text-green-600');
-            } catch (e) {
-                console.error("Error adding document: ", e);
-            }
-        }
-        
-        /**
-         * Toggles the completion status of a task in Firestore.
-         */
-        async function toggleTaskCompletion(taskId, isCompleted) {
-            if (!db || userId === 'anonymous') return;
-            
-            // Find the task for the feedback message BEFORE updating
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                console.error("Task not found for toggle.");
-                return;
-            }
-            
-            try {
-                const taskDocRef = doc(db, getUserCollectionPath('tasks'), taskId);
-                await updateDoc(taskDocRef, {
-                    completed: isCompleted
-                });
-                
-                // --- NEW: PHASE 1 INSTANT FEEDBACK ---
-                const scoreChange = task.points;
-                const color = isCompleted ? 'text-green-600' : 'text-red-600';
-                const title = isCompleted ? 'Task Completed!' : 'Task Reopened';
-                const sign = isCompleted ? '+' : '';
-
-                showMessageBox(
-                    title, 
-                    `<p><strong>${task.name}</strong> ${isCompleted ? 'finished' : 'reopened'}!</p>
-                     <p class="mt-3 text-xl font-bold ${color}">Score: ${sign}${scoreChange} Points</p>`,
-                    isCompleted ? 'text-green-600' : 'text-yellow-600'
-                );
-                // --- END FEEDBACK ---
-
-            } catch (e) {
-                console.error("Error updating task: ", e);
-            }
-        }
-        
-        /**
-         * Deletes a single task from Firestore.
-         */
-        async function deleteTask(taskId) {
-            if (!db || userId === 'anonymous') return;
-            
-            // Find the task for the feedback message BEFORE deleting
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) {
-                console.error("Task not found for deletion.");
-                return;
-            }
-
-            try {
-                const taskDocRef = doc(db, getUserCollectionPath('tasks'), taskId);
-                await deleteDoc(taskDocRef);
-                
-                // --- NEW: PHASE 1 INSTANT FEEDBACK ---
-                showMessageBox(
-                    "Task Deleted", 
-                    `<p><strong>${task.name} (${task.points} Pts)</strong> was successfully removed from your list.</p>`,
-                    'text-gray-600'
-                );
-                // --- END FEEDBACK ---
-                
-            } catch (e) {
-                console.error("Error deleting task: ", e);
-            }
-        }
-        
-        // --- Remaining Firestore functions (archiveScore, resetTasks, saveGoal, deleteAllCollectionItems, masterReset) are unchanged ---
-
-        async function archiveScore(dailyScore) {
-            if (!db || userId === 'anonymous' || dailyScore === 0) return;
-
-            try {
-                const historyRef = collection(db, getUserCollectionPath('scoreHistory'));
-                
-                await addDoc(historyRef, {
-                    score: dailyScore,
-                    date: serverTimestamp(), // Use server timestamp for reliable daily logging
-                    goalAchieved: dailyScore >= goals.daily && goals.daily > 0,
-                    dailyGoal: goals.daily
-                });
-                console.log(`Score ${dailyScore} archived successfully.`);
-            } catch (e) {
-                console.error("Error archiving score: ", e);
-            }
-        }
-
-        async function resetTasks(deleteCompleted, deleteIncomplete) {
-            if (!db || userId === 'anonymous') return;
-            
-            const dailyScore = calculateDailyScore(tasks);
-            // Step 1: Archive the current score before deleting tasks
-            if (dailyScore > 0) {
-                 await archiveScore(dailyScore);
-            }
-            
-            try {
-                const tasksRef = collection(db, getUserCollectionPath('tasks'));
-                
-                const snapshot = await getDocs(tasksRef);
-                const deletions = [];
-
-                snapshot.docs.forEach(d => {
-                    const task = d.data();
-                    const taskId = d.id;
-                    
-                    const shouldDelete = (task.completed && deleteCompleted) || (!task.completed && deleteIncomplete);
-                    
-                    if (shouldDelete) {
-                        const taskDocRef = doc(db, getUserCollectionPath('tasks'), taskId);
-                        deletions.push(deleteDoc(taskDocRef));
-                    }
-                });
-
-                await Promise.all(deletions);
-                console.log(`Successfully deleted ${deletions.length} tasks and archived score.`);
-                
-            } catch (e) {
-                console.error("Error during task reset/cleanup: ", e);
-            }
-        }
-
-        async function saveGoal(target, frequency) {
-            if (!db || userId === 'anonymous') return;
-
-            try {
-                const goalDocRef = doc(db, getUserCollectionPath('settings'), 'goals');
-                const data = {};
-                data[`${frequency}Goal`] = parseInt(target, 10);
-
-                await setDoc(goalDocRef, data, { merge: true });
-                console.log(`${frequency} goal set successfully.`);
-            } catch (e) {
-                console.error("Error setting goal: ", e);
-            }
-        }
-        
-        async function deleteAllCollectionItems(collectionPath) {
-            if (!db || userId === 'anonymous') return 0;
-            
-            try {
-                const collectionRef = collection(db, collectionPath);
-                const snapshot = await getDocs(collectionRef);
-                const deletions = [];
-
-                snapshot.docs.forEach(d => {
-                    const docRef = doc(db, collectionPath, d.id);
-                    deletions.push(deleteDoc(docRef));
-                    
-                });
-
-                await Promise.all(deletions);
-                console.log(`Successfully deleted ${deletions.length} items from ${collectionPath}.`);
-                return deletions.length;
-            } catch (e) {
-                console.error(`Error deleting items from ${collectionPath}:`, e);
-                return 0;
-            }
-        }
-
-        async function masterReset() {
-            if (!db || userId === 'anonymous') return;
-            
-            // 1. Delete all Tasks
-            await deleteAllCollectionItems(getUserCollectionPath('tasks'));
-
-            // 2. Delete all Score History
-            await deleteAllCollectionItems(getUserCollectionPath('scoreHistory'));
-
-            // 3. Reset Goals document (Set all goals to 0)
-            try {
-                const goalDocRef = doc(db, getUserCollectionPath('settings'), 'goals');
-                await setDoc(goalDocRef, {
-                    dailyGoal: 0,
-                    weeklyGoal: 0,
-                    monthlyGoal: 0,
-                    yearlyGoal: 0
-                });
-                console.log('All goals reset to zero.');
-            } catch (e) {
-                console.error("Error resetting goals during master reset:", e);
-            }
-        }
-
-
-        // --- Event Handlers ---
-
-        document.getElementById('new-task-form').addEventListener('submit', async function(e) { 
-            e.preventDefault();
-            const name = taskNameInput.value.trim();
-            const points = taskPointsSelect.value;
-            
-            if (name && points) {
-                await addTask(name, points);
-                
-                // Only reset the form if it was NOT a successful save (i.e. if it hit a restriction, 
-                // the user may want to quickly re-enter/change the task name)
-                const pointValue = parseInt(points, 10);
-                // Check if it was a Phase 2 task (which does not count towards budget)
-                const isPhase2 = pointValue === HIGH_VALUE_PHASE_2_POINTS; 
-                // Check if the task was successfully added (not exceeding budget for non-Phase 2 tasks)
-                const isAddedSuccessfully = !isPhase2 && (currentBudgetPoints + pointValue <= MAX_TASK_BUDGET);
-                
-                if (isPhase2 || isAddedSuccessfully) {
-                    this.reset();
-                    taskNameInput.focus();
-                }
-            }
-        });
-        
-        // Add listener to check validity whenever the point value changes
-        taskPointsSelect.addEventListener('change', checkTaskFormValidity);
-
-
-        // Navigation Handlers
-        navTrackerBtn.addEventListener('click', () => switchView('tracker'));
-        navHistoryBtn.addEventListener('click', () => switchView('history'));
-        
-        // Dynamic Goal Period Handlers
-        Object.values(periodBtns).forEach(button => {
-            button.addEventListener('click', () => {
-                const period = button.dataset.period;
-                if (period) {
-                    currentPeriod = period;
-                    updateDynamicGoalDisplay();
-                }
-            });
-        });
-
-
-        // Goal Modal Handlers (UPDATED for better daily goal recommendation message)
-        setGoalBtn.addEventListener('click', () => {
-            // Pre-fill modal based on current selected period
-            const frequency = currentPeriod;
-            goalFrequencySelect.value = frequency;
-            goalInput.value = goals[frequency] > 0 ? goals[frequency] : '';
-            
-            // Set placeholder for guidance
-            const placeholderText = frequency === 'daily' 
-                                  ? `${MIN_RECOMMENDED_DAILY_GOAL} (Recommended Minimum)` 
-                                  : frequency === 'weekly' ? '150' : frequency === 'monthly' ? '600' : '7500';
-
-            goalInput.placeholder = `E.g., ${placeholderText}`;
-            
-            goalModal.classList.remove('hidden');
-            goalInput.focus();
-        });
-        
-        // Update input field placeholder when frequency changes in the modal
-        goalFrequencySelect.addEventListener('change', (e) => {
-            const frequency = e.target.value;
-            const placeholderText = frequency === 'daily' 
-                                  ? `${MIN_RECOMMENDED_DAILY_GOAL} (Recommended Minimum)` 
-                                  : frequency === 'weekly' ? '150' : frequency === 'monthly' ? '600' : '7500';
-            
-            goalInput.placeholder = `E.g., ${placeholderText}`;
-            goalInput.value = goals[frequency] > 0 ? goals[frequency] : '';
-        });
-
-
-        cancelGoalBtn.addEventListener('click', () => {
-            goalModal.classList.add('hidden');
-        });
-
-        saveGoalBtn.addEventListener('click', () => {
-            const newGoal = parseInt(goalInput.value, 10);
-            const frequency = goalFrequencySelect.value;
-            
-            if (newGoal > 0 && frequency) {
-                // --- DAILY GOAL MINIMUM RECOMMENDATION (UPDATED MESSAGE) ---
-                if (frequency === 'daily' && newGoal < MIN_RECOMMENDED_DAILY_GOAL) {
-                    // Using the copy from ui_copy_revisions.txt, formatted with HTML <strong>
-                    const newContent = `
-                        <p>Your current goal is <strong>${newGoal} points</strong>.</p>
-                        <p class="mt-3">To build <strong>High-Impact Momentum</strong>, we strongly recommend setting your Daily Target to at least <strong>${MIN_RECOMMENDED_DAILY_GOAL} points</strong>.</p>
-                        <p class="mt-3 text-sm font-semibold">Hitting <strong>${MIN_RECOMMENDED_DAILY_GOAL}</strong> ensures you complete at least one High Value task daily. Aim higher, boost your productivity!</p>
-                    `;
-                    
-                    showMessageBox(
-                        "Set a High-Impact Daily Target", 
-                        newContent,
-                        'text-yellow-600'
-                    );
-                    // The user can still save the goal, so we proceed after the message.
-                }
-                // --- END RECOMMENDATION ---
-                
-                saveGoal(newGoal, frequency);
-                goalModal.classList.add('hidden');
-                currentPeriod = frequency; // Switch the view to the goal just set
-            } else {
-                goalInput.style.borderColor = 'red'; 
-                setTimeout(() => goalInput.style.borderColor = '', 1000);
-            }
-        });
-
-        // Filter Logic Handler
-        filterBtn.addEventListener('click', () => {
-            isFilterActive = !isFilterActive;
-            filterBtn.dataset.filter = isFilterActive ? 'on' : 'off';
-            
-            if (isFilterActive) {
-                filterBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
-                filterBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-                filterBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i> Exit Focus Mode';
-            } else {
-                filterBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-                filterBtn.classList.add('bg-green-500', 'hover:bg-green-600');
-                filterBtn.innerHTML = '<i class="fas fa-filter mr-2"></i> Focus: High Value (10 pts)';
-            }
-            renderTasks();
-        });
-        
-        // Daily Task Reset Handlers
-        resetTasksBtn.addEventListener('click', () => {
-            const dailyScore = calculateDailyScore(tasks);
-            currentScoreModalEl.textContent = dailyScore; 
-            resetModal.classList.remove('hidden');
-        });
-        
-        cancelResetBtn.addEventListener('click', () => {
-            resetModal.classList.add('hidden');
-            deleteIncompleteCheckbox.checked = false; 
-        });
-        
-        confirmResetBtn.addEventListener('click', async () => {
-            const deleteCompleted = true; // Always true for daily cleanup
-            const deleteIncomplete = deleteIncompleteCheckbox.checked;
-            
-            // Capture score before reset function deletes tasks
-            const finalScore = calculateDailyScore(tasks); 
-            
-            resetModal.classList.add('hidden');
-            
-            // Show loading message while cleanup happens
-            taskListEl.innerHTML = `<p class="text-center text-indigo-500 py-6 font-semibold"><i class="fas fa-sync-alt fa-spin mr-2"></i> Performing cleanup and saving score...</p>`;
-
-            await resetTasks(deleteCompleted, deleteIncomplete);
-            
-            // --- NEW: PHASE 1 INSTANT FEEDBACK FOR RESET ---
-            showMessageBox(
-                "Daily Cleanup Complete!",
-                `<p>Your final score of <strong>${finalScore} points</strong> has been archived to your Score History!</p>
-                 <p class="mt-3">Your task list is now clean and ready for a new, highly-focused day.</p>`,
-                 'text-indigo-600'
             );
-            // --- END FEEDBACK ---
-            
-            // Important: Reset the checkbox state for next time
-            deleteIncompleteCheckbox.checked = false;
-        });
+        };
 
-        // Master Reset Handlers
-        masterResetBtn.addEventListener('click', () => {
-            masterResetModal.classList.remove('hidden');
-        });
-
-        cancelMasterResetBtn.addEventListener('click', () => {
-            masterResetModal.classList.add('hidden');
-        });
-
-        confirmMasterResetBtn.addEventListener('click', async () => {
-            masterResetModal.classList.add('hidden');
-            
-            taskListEl.innerHTML = `<p class="text-center text-red-500 py-6 font-semibold"><i class="fas fa-sync-alt fa-spin mr-2"></i> Wiping all data...</p>`;
-            historyListEl.innerHTML = `<p class="text-center text-red-500 py-6 font-semibold">History wiped...</p>`;
-
-            await masterReset();
-            
-            // Also reset the UI state so the welcome card shows again
-            uiState.welcomeHidden = false;
-            
-            showMessageBox(
-                "Master Reset Complete",
-                `<p>All application data (Tasks, History, Goals) has been permanently wiped.</p>
-                 <p class="mt-3 text-sm font-semibold text-red-500">You are starting completely fresh!</p>`,
-                 'text-red-600'
-            );
-        });
-
-
-        // --- Initialization ---
-
-        /**
-         * Initializes Firebase and handles authentication.
-         */
-        async function initializeAppAndAuth() {
-            if (!firebaseConfig) {
-                 console.error("Firebase config not available.");
-                 loadingMessageEl.textContent = "Firebase is not configured. Cannot load data.";
-                 return;
-            }
-
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplayEl.textContent = `User ID: ${userId}`;
-                        console.log("Authentication successful. User ID:", userId);
-                        setupFirestoreListeners();
-                    } else {
-                        console.log("No user signed in.");
-                        userIdDisplayEl.textContent = `User ID: Anonymous`;
-                        loadingMessageEl.textContent = "Please sign in to save your progress.";
-                    }
-                });
-
-            } catch (error) {
-                console.error("Firebase initialization or auth error:", error);
-                loadingMessageEl.textContent = `Error during initialization: ${error.message}`;
-            }
+        // --- Final Render Call ---
+        // This is the critical step that relies on 'App' being defined above.
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+            ReactDOM.createRoot(rootElement).render(<App />);
         }
-
-        initializeAppAndAuth();
 
     </script>
 </body>
