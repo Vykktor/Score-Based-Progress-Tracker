@@ -48,7 +48,7 @@
                 <p class="text-sm font-medium text-gray-700">Daily Goal</p>
                 <div class="text-2xl font-bold text-gray-800 flex items-center justify-center sm:justify-end">
                     <span id="daily-goal-value">0</span> Points
-                    <i id="goal-status-icon" class="fas fa-hourglass-half ml-2 text-yellow-500"></i>
+                    <i id="goal-status-icon" class="fas fa-bullseye ml-2 text-gray-400"></i>
                 </div>
             </div>
         </section>
@@ -83,7 +83,7 @@
         </section>
 
         <!-- Task List -->
-        <section>
+        <section class="mb-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Your Tasks</h2>
             <!-- Task List Container -->
             <div id="task-list" class="task-list-container space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -91,6 +91,13 @@
                 <p id="loading-message" class="text-center text-gray-500 py-6">Loading tasks...</p>
             </div>
             <p id="no-tasks-message" class="text-center text-gray-500 py-6 hidden">All clear! Time to add a new goal.</p>
+        </section>
+
+        <!-- NEW: Reset Button -->
+        <section>
+            <button id="reset-tasks-btn" class="w-full bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-400 transition duration-150 shadow-md">
+                <i class="fas fa-broom mr-2"></i> Daily Task Clean-up
+            </button>
         </section>
     </div>
 
@@ -107,12 +114,44 @@
             </div>
         </div>
     </div>
+    
+    <!-- NEW: Modal for Task Reset Confirmation -->
+    <div id="reset-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
+            <h3 class="text-2xl font-bold mb-4 text-gray-800 flex items-center">
+                <i class="fas fa-trash-alt text-red-500 mr-2"></i> Daily Task Cleanup
+            </h3>
+            <p class="text-gray-700 mb-4">This action will clear your current task list to prepare for a new day. Please choose what to remove:</p>
+            
+            <div class="space-y-3 mb-6">
+                <!-- Option 1: Delete ALL Completed Tasks -->
+                <div class="flex items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                    <input type="checkbox" id="delete-completed" checked disabled 
+                           class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-3">
+                    <label for="delete-completed" class="font-semibold text-green-700">Remove ALL <span class="font-bold">Completed Tasks</span></label>
+                </div>
+
+                <!-- Option 2: Delete ALL Incomplete Tasks -->
+                <div class="flex items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <input type="checkbox" id="delete-incomplete" 
+                           class="h-5 w-5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 mr-3">
+                    <label for="delete-incomplete" class="font-semibold text-yellow-700">Remove ALL <span class="font-bold">Incomplete Tasks</span> (Start completely fresh)</label>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-reset-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150">Cancel</button>
+                <button id="confirm-reset-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-150">Confirm Cleanup</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         // --- FIREBASE IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Note: For bulk deletion, we need getDocs alongside standard firestore methods
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Use Debug logging for development
@@ -140,13 +179,20 @@
         const noTasksMessageEl = document.getElementById('no-tasks-message');
         const loadingMessageEl = document.getElementById('loading-message');
         const filterBtn = document.getElementById('filter-10pt-btn');
+        const resetTasksBtn = document.getElementById('reset-tasks-btn'); // NEW
 
-        // --- MODAL Elements ---
+        // --- MODAL Elements (Goal) ---
         const goalModal = document.getElementById('goal-modal');
         const setGoalBtn = document.getElementById('set-goal-btn');
         const cancelGoalBtn = document.getElementById('cancel-goal-btn');
         const saveGoalBtn = document.getElementById('save-goal-btn');
         const goalInput = document.getElementById('goal-input');
+        
+        // --- MODAL Elements (Reset) ---
+        const resetModal = document.getElementById('reset-modal'); // NEW
+        const cancelResetBtn = document.getElementById('cancel-reset-btn'); // NEW
+        const confirmResetBtn = document.getElementById('confirm-reset-btn'); // NEW
+        const deleteIncompleteCheckbox = document.getElementById('delete-incomplete'); // NEW
 
         // --- Utility Functions ---
 
@@ -211,9 +257,12 @@
 
             // Sort by points (highest first) for visual priority, then by completion status
             tasksToRender.sort((a, b) => {
+                // Completed tasks always go to the bottom
                 if (a.completed && !b.completed) return 1;
                 if (!a.completed && b.completed) return -1;
-                return (b.points || 0) - (a.points || 0); // Higher points first
+                
+                // Higher points first (Eat the Frog prioritization)
+                return (b.points || 0) - (a.points || 0); 
             });
 
             if (tasksToRender.length === 0) {
@@ -355,7 +404,7 @@
         }
         
         /**
-         * Deletes a task from Firestore.
+         * Deletes a single task from Firestore.
          */
         async function deleteTask(taskId) {
             if (!db || userId === 'anonymous') return;
@@ -385,6 +434,45 @@
                 console.error("Error setting daily goal: ", e);
             }
         }
+        
+        /**
+         * NEW: Handles the bulk deletion of tasks based on completion status.
+         * @param {boolean} deleteCompleted - Whether to delete completed tasks.
+         * @param {boolean} deleteIncomplete - Whether to delete incomplete tasks.
+         */
+        async function resetTasks(deleteCompleted, deleteIncomplete) {
+            if (!db || userId === 'anonymous') return;
+            
+            try {
+                const tasksRef = collection(db, getUserCollectionPath('tasks'));
+                
+                // Get all tasks currently stored for this user
+                const snapshot = await getDocs(tasksRef);
+                const deletions = [];
+
+                snapshot.docs.forEach(d => {
+                    const task = d.data();
+                    const taskId = d.id;
+                    
+                    // Logic to determine if task should be deleted
+                    const shouldDelete = (task.completed && deleteCompleted) || (!task.completed && deleteIncomplete);
+                    
+                    if (shouldDelete) {
+                        const taskDocRef = doc(db, getUserCollectionPath('tasks'), taskId);
+                        // Add the promise for deletion
+                        deletions.push(deleteDoc(taskDocRef));
+                    }
+                });
+
+                // Execute all deletions concurrently
+                await Promise.all(deletions);
+                console.log(`Successfully deleted ${deletions.length} tasks.`);
+                
+            } catch (e) {
+                console.error("Error during task reset/cleanup: ", e);
+            }
+        }
+
 
         // --- Event Handlers ---
 
@@ -400,6 +488,7 @@
             }
         });
 
+        // Goal Modal Handlers
         setGoalBtn.addEventListener('click', () => {
             goalInput.value = dailyGoal > 0 ? dailyGoal : ''; // Pre-fill if goal exists
             goalModal.classList.remove('hidden');
@@ -416,15 +505,13 @@
                 saveDailyGoal(newGoal);
                 goalModal.classList.add('hidden');
             } else {
-                // Simple feedback without using alert()
                 goalInput.style.borderColor = 'red'; 
                 setTimeout(() => goalInput.style.borderColor = '', 1000);
             }
         });
 
-        // --- NEW: Filter Logic ---
+        // Filter Logic Handler
         filterBtn.addEventListener('click', () => {
-            // Toggle the filter state
             isFilterActive = !isFilterActive;
             filterBtn.dataset.filter = isFilterActive ? 'on' : 'off';
             
@@ -437,9 +524,32 @@
                 filterBtn.classList.add('bg-green-500', 'hover:bg-green-600');
                 filterBtn.innerHTML = '<i class="fas fa-filter mr-2"></i> Focus: High Value (10 pts)';
             }
-
-            // Re-render tasks with the new filter applied
             renderTasks();
+        });
+        
+        // NEW: Task Reset Handlers
+        resetTasksBtn.addEventListener('click', () => {
+            resetModal.classList.remove('hidden');
+        });
+        
+        cancelResetBtn.addEventListener('click', () => {
+            resetModal.classList.add('hidden');
+            // Reset the incomplete checkbox state on cancel
+            deleteIncompleteCheckbox.checked = false; 
+        });
+        
+        confirmResetBtn.addEventListener('click', async () => {
+            const deleteCompleted = true; // Always true for daily cleanup
+            const deleteIncomplete = deleteIncompleteCheckbox.checked;
+            
+            resetModal.classList.add('hidden');
+            
+            // Show a brief message while deleting
+            taskListEl.innerHTML = `<p class="text-center text-indigo-500 py-6 font-semibold"><i class="fas fa-sync-alt fa-spin mr-2"></i> Performing cleanup...</p>`;
+
+            await resetTasks(deleteCompleted, deleteIncomplete);
+            
+            // Note: The onSnapshot listener will automatically re-render the list upon completion.
         });
 
 
