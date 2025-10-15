@@ -52,11 +52,22 @@
                 </div>
             </div>
         </section>
+        
+        <!-- Long-Term Progress Section (NEW) -->
+        <section class="mb-8 p-4 bg-gray-100 rounded-xl border border-gray-300">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-calendar-alt mr-2 text-indigo-600"></i> Long-Term Progress
+            </h2>
+            <div id="long-term-progress-container" class="space-y-4">
+                <!-- Progress bars will be injected here -->
+                <p id="progress-loading-message" class="text-center text-gray-500 py-2">Calculating long-term scores...</p>
+            </div>
+        </section>
 
-        <!-- Set Goal and Productivity Filter -->
+        <!-- Set Goal and Productivity Filter (Renamed Button) -->
         <section class="mb-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
              <button id="set-goal-btn" class="flex-1 bg-indigo-500 text-white py-3 px-4 rounded-xl font-semibold shadow-md hover:bg-indigo-600 transition duration-150">
-                <i class="fas fa-bullseye mr-2"></i> Set Daily Goal
+                <i class="fas fa-bullseye mr-2"></i> Set Goal
             </button>
             <button id="filter-10pt-btn" class="flex-1 bg-green-500 text-white py-3 px-4 rounded-xl font-semibold shadow-md hover:bg-green-600 transition duration-150" data-filter="off">
                 <i class="fas fa-filter mr-2"></i> Focus: High Value (10 pts)
@@ -93,7 +104,7 @@
             <p id="no-tasks-message" class="text-center text-gray-500 py-6 hidden">All clear! Time to add a new goal.</p>
         </section>
 
-        <!-- NEW: Reset Button -->
+        <!-- Reset Button -->
         <section>
             <button id="reset-tasks-btn" class="w-full bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-400 transition duration-150 shadow-md">
                 <i class="fas fa-broom mr-2"></i> Daily Task Clean-up
@@ -101,11 +112,21 @@
         </section>
     </div>
 
-    <!-- Modal for Setting Daily Goal -->
+    <!-- Modal for Setting Goal (Modified) -->
     <div id="goal-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
-            <h3 class="text-xl font-semibold mb-4 text-gray-800">Set Today's Target Score</h3>
-            <p class="text-sm text-gray-600 mb-4">A goal gives you direction and helps you prioritize your most important tasks (10-point tasks).</p>
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Set Target Score</h3>
+            <p class="text-sm text-gray-600 mb-4">Choose a frequency and set a score target.</p>
+            
+            <!-- Goal Frequency Selector -->
+            <select id="goal-frequency" 
+                    class="w-full p-3 border border-gray-300 rounded-lg mb-3 bg-white focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="daily">Daily Goal</option>
+                <option value="weekly">Weekly Goal</option>
+                <option value="monthly">Monthly Goal</option>
+                <option value="yearly">Yearly Goal</option> <!-- ADDED: Yearly Goal Option -->
+            </select>
+            
             <input type="number" id="goal-input" placeholder="E.g., 20" min="1"
                    class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-indigo-500 focus:border-indigo-500">
             <div class="flex justify-end space-x-3">
@@ -115,7 +136,7 @@
         </div>
     </div>
     
-    <!-- NEW: Modal for Task Reset Confirmation -->
+    <!-- Modal for Task Reset Confirmation -->
     <div id="reset-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
             <h3 class="text-2xl font-bold mb-4 text-gray-800 flex items-center">
@@ -124,7 +145,7 @@
             <p class="text-gray-700 mb-4">This action will clear your current task list to prepare for a new day. Please choose what to remove:</p>
             
             <div class="space-y-3 mb-6">
-                <!-- Option 1: Delete ALL Completed Tasks -->
+                <!-- Option 1: Delete ALL Completed Tasks (Always checked) -->
                 <div class="flex items-center p-3 bg-green-50 rounded-lg border border-green-200">
                     <input type="checkbox" id="delete-completed" checked disabled 
                            class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-3">
@@ -137,6 +158,10 @@
                            class="h-5 w-5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 mr-3">
                     <label for="delete-incomplete" class="font-semibold text-yellow-700">Remove ALL <span class="font-bold">Incomplete Tasks</span> (Start completely fresh)</label>
                 </div>
+                
+                <p class="text-sm text-indigo-700 bg-indigo-50 p-3 rounded-lg border border-indigo-200 font-medium">
+                    <i class="fas fa-info-circle mr-1"></i> Your final score of <span id="current-score-modal" class="font-extrabold">0</span> points will be saved to your history before tasks are cleared.
+                </p>
             </div>
 
             <div class="flex justify-end space-x-3">
@@ -150,7 +175,6 @@
         // --- FIREBASE IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Note: For bulk deletion, we need getDocs alongside standard firestore methods
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
@@ -167,7 +191,11 @@
         let userId = 'anonymous'; // Default until authenticated
         let currentScore = 0;
         let dailyGoal = 0;
+        let weeklyGoal = 0; 
+        let monthlyGoal = 0; 
+        let yearlyGoal = 0;
         let tasks = [];
+        let scoreHistory = []; // NEW: Array to store daily score history
         let isFilterActive = false;
         
         // --- DOM Elements ---
@@ -179,7 +207,9 @@
         const noTasksMessageEl = document.getElementById('no-tasks-message');
         const loadingMessageEl = document.getElementById('loading-message');
         const filterBtn = document.getElementById('filter-10pt-btn');
-        const resetTasksBtn = document.getElementById('reset-tasks-btn'); // NEW
+        const longTermProgressContainerEl = document.getElementById('long-term-progress-container');
+        const progressLoadingMessageEl = document.getElementById('progress-loading-message');
+
 
         // --- MODAL Elements (Goal) ---
         const goalModal = document.getElementById('goal-modal');
@@ -187,12 +217,15 @@
         const cancelGoalBtn = document.getElementById('cancel-goal-btn');
         const saveGoalBtn = document.getElementById('save-goal-btn');
         const goalInput = document.getElementById('goal-input');
+        const goalFrequencySelect = document.getElementById('goal-frequency'); 
         
         // --- MODAL Elements (Reset) ---
-        const resetModal = document.getElementById('reset-modal'); // NEW
-        const cancelResetBtn = document.getElementById('cancel-reset-btn'); // NEW
-        const confirmResetBtn = document.getElementById('confirm-reset-btn'); // NEW
-        const deleteIncompleteCheckbox = document.getElementById('delete-incomplete'); // NEW
+        const resetTasksBtn = document.getElementById('reset-tasks-btn');
+        const resetModal = document.getElementById('reset-modal');
+        const cancelResetBtn = document.getElementById('cancel-reset-btn');
+        const confirmResetBtn = document.getElementById('confirm-reset-btn');
+        const deleteIncompleteCheckbox = document.getElementById('delete-incomplete');
+        const currentScoreModalEl = document.getElementById('current-score-modal');
 
         // --- Utility Functions ---
 
@@ -208,6 +241,7 @@
         
         /**
          * Calculates the total score from the provided list of tasks.
+         * NOTE: Only counts points from COMPLETED tasks.
          * @param {Array<Object>} taskList - The array of task objects.
          * @returns {number} The current total score.
          */
@@ -216,33 +250,143 @@
                            .reduce((sum, t) => sum + (t.points || 0), 0);
         }
 
+        // --- Date Calculation Utilities (NEW) ---
+
+        /** Returns the start of the week (Monday) for the given date. */
+        function getWeekStart(date) {
+            const d = new Date(date);
+            // setHours to midnight to ensure clean comparison
+            d.setHours(0, 0, 0, 0); 
+            const day = d.getDay(); // 0 for Sunday, 1 for Monday
+            // Adjust to Monday (1). If it's Sunday (0), move back 6 days.
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+            return new Date(d.setDate(diff));
+        }
+
+        /** Returns the start of the current month. */
+        function getMonthStart(date) {
+            const d = new Date(date);
+            const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+            monthStart.setHours(0, 0, 0, 0);
+            return monthStart;
+        }
+
+        /** Returns the start of the current year. */
+        function getYearStart(date) {
+            const d = new Date(date);
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            yearStart.setHours(0, 0, 0, 0);
+            return yearStart;
+        }
+        
+        /** Calculates the total score for current week, month, and year based on history. */
+        function calculateLongTermProgress(history) {
+            const now = new Date();
+            const weekStart = getWeekStart(now);
+            const monthStart = getMonthStart(now);
+            const yearStart = getYearStart(now);
+            
+            let weeklyScore = 0;
+            let monthlyScore = 0;
+            let yearlyScore = 0;
+
+            history.forEach(item => {
+                // Ensure date is a JavaScript Date object, converting Firestore Timestamp if necessary
+                const itemDate = item.date.toDate ? item.date.toDate() : new Date(item.date);
+                
+                if (itemDate >= weekStart) {
+                    weeklyScore += item.score;
+                }
+                if (itemDate >= monthStart) {
+                    monthlyScore += item.score;
+                }
+                if (itemDate >= yearStart) {
+                    yearlyScore += item.score;
+                }
+            });
+
+            return {
+                weekly: { current: weeklyScore, target: weeklyGoal },
+                monthly: { current: monthlyScore, target: monthlyGoal },
+                yearly: { current: yearlyScore, target: yearlyGoal }
+            };
+        }
+        
+        // --- Rendering Functions ---
+
+        /** Generates the HTML for a single progress bar. */
+        function createProgressBarHTML(current, target, label) {
+            const percentage = target > 0 ? Math.min(100, Math.floor((current / target) * 100)) : 0;
+            const barColor = percentage >= 100 ? 'bg-green-500' : 'bg-indigo-500';
+            const textColor = percentage >= 100 ? 'text-green-600' : 'text-indigo-600';
+            
+            return `
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-medium text-gray-700">${label}</span>
+                        <span class="text-sm font-semibold ${textColor}">${percentage}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="${barColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        ${current} / ${target > 0 ? target : 'N/A'} Points
+                    </p>
+                </div>
+            `;
+        }
+
+        /** Renders the long-term progress section. */
+        function renderLongTermProgress() {
+            if (scoreHistory.length === 0) {
+                 longTermProgressContainerEl.innerHTML = `<p class="text-center text-gray-500 py-2">No score history yet. Complete your first daily cleanup to start tracking long-term goals!</p>`;
+                 return;
+            }
+
+            const progress = calculateLongTermProgress(scoreHistory);
+            
+            const weeklyBar = createProgressBarHTML(progress.weekly.current, progress.weekly.target, 'Weekly Goal');
+            const monthlyBar = createProgressBarHTML(progress.monthly.current, progress.monthly.target, 'Monthly Goal');
+            const yearlyBar = createProgressBarHTML(progress.yearly.current, progress.yearly.target, 'Yearly Goal');
+
+            longTermProgressContainerEl.innerHTML = `
+                ${weeklyBar}
+                ${monthlyBar}
+                ${yearlyBar}
+            `;
+        }
+
+
         /**
          * Updates the UI for the current score and daily goal status.
+         * NOTE: Only the daily goal is displayed in the main header for simplicity.
          */
-        function updateScoreUI() {
+        function updateDashboardUI() {
             currentScoreEl.textContent = currentScore;
             dailyGoalValueEl.textContent = dailyGoal;
+            currentScoreModalEl.textContent = currentScore; // Update score in the modal
 
-            // Update goal status icon and color
+            // Update goal status icon and color based on daily goal
             if (currentScore >= dailyGoal && dailyGoal > 0) {
                 goalStatusIconEl.className = 'fas fa-check-circle ml-2 text-green-500';
-                goalStatusIconEl.title = 'Goal Reached!';
+                goalStatusIconEl.title = 'Daily Goal Reached!';
             } else if (dailyGoal > 0) {
                 const progress = dailyGoal > 0 ? (currentScore / dailyGoal) : 0;
                 if (progress > 0.5) {
                     goalStatusIconEl.className = 'fas fa-chart-bar ml-2 text-yellow-500';
-                    goalStatusIconEl.title = 'Making good progress!';
+                    goalStatusIconEl.title = 'Making good progress on daily goal!';
                 } else {
                     goalStatusIconEl.className = 'fas fa-hourglass-half ml-2 text-red-500';
-                    goalStatusIconEl.title = 'Keep pushing!';
+                    goalStatusIconEl.title = 'Keep pushing for your daily goal!';
                 }
             } else {
                  goalStatusIconEl.className = 'fas fa-bullseye ml-2 text-gray-400';
-                 goalStatusIconEl.title = 'Set a goal!';
+                 goalStatusIconEl.title = 'Set a daily goal!';
             }
+            
+            // Re-render long-term progress every time daily goals change
+            renderLongTermProgress();
         }
-
-        // --- Rendering Functions ---
 
         /**
          * Renders the task list to the DOM, applying the current filter.
@@ -325,7 +469,7 @@
         // --- Firestore Interaction Functions ---
 
         /**
-         * Sets up real-time listeners for tasks and the daily goal.
+         * Sets up real-time listeners for tasks, goals, and score history.
          */
         function setupFirestoreListeners() {
             if (!db || userId === 'anonymous') return;
@@ -343,26 +487,57 @@
                 // Recalculate score and update UI
                 currentScore = calculateScore(tasks);
                 renderTasks();
-                updateScoreUI();
+                updateDashboardUI();
                 loadingMessageEl.classList.add('hidden');
             }, (error) => {
                 console.error("Error listening to tasks:", error);
                 loadingMessageEl.textContent = "Error loading tasks.";
             });
 
-            // 2. Daily Goal Listener
-            const goalDocRef = doc(db, getUserCollectionPath('settings'), 'dailyGoal');
+            // 2. Multi-Frequency Goal Listener
+            const goalDocRef = doc(db, getUserCollectionPath('settings'), 'goals');
             onSnapshot(goalDocRef, (docSnapshot) => {
                 if (docSnapshot.exists()) {
-                    dailyGoal = docSnapshot.data().target || 0;
-                    dailyGoal = parseInt(dailyGoal, 10) || 0;
-                    updateScoreUI();
+                    const data = docSnapshot.data();
+                    // Update all goal variables
+                    dailyGoal = parseInt(data.dailyGoal, 10) || 0;
+                    weeklyGoal = parseInt(data.weeklyGoal, 10) || 0;
+                    monthlyGoal = parseInt(data.monthlyGoal, 10) || 0;
+                    yearlyGoal = parseInt(data.yearlyGoal, 10) || 0;
+                    updateDashboardUI(); // Call UI update after goals change
                 } else {
                     dailyGoal = 0;
-                    updateScoreUI();
+                    weeklyGoal = 0;
+                    monthlyGoal = 0;
+                    yearlyGoal = 0;
+                    updateDashboardUI();
                 }
             }, (error) => {
-                console.error("Error listening to daily goal:", error);
+                console.error("Error listening to goals:", error);
+            });
+            
+            // 3. Score History Listener (NEW)
+            const historyRef = collection(db, getUserCollectionPath('scoreHistory'));
+            // Note: We avoid orderBy() to prevent indexing errors, and sort in memory if needed.
+            onSnapshot(historyRef, (snapshot) => {
+                scoreHistory = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                // Sort by date descending in memory for consistency
+                scoreHistory.sort((a, b) => {
+                    const dateA = a.date?.toDate ? a.date.toDate().getTime() : 0;
+                    const dateB = b.date?.toDate ? b.date.toDate().getTime() : 0;
+                    return dateB - dateA; // Latest scores first
+                });
+                
+                renderLongTermProgress(); // Call progress update
+                progressLoadingMessageEl.classList.add('hidden');
+
+            }, (error) => {
+                console.error("Error listening to score history:", error);
+                progressLoadingMessageEl.textContent = "Error loading history.";
             });
         }
 
@@ -416,32 +591,36 @@
                 console.error("Error deleting task: ", e);
             }
         }
-
-        /**
-         * Saves the daily goal to Firestore.
-         */
-        async function saveDailyGoal(target) {
-            if (!db || userId === 'anonymous' || !target || target < 1) return;
-
-            try {
-                const goalDocRef = doc(db, getUserCollectionPath('settings'), 'dailyGoal');
-                await setDoc(goalDocRef, {
-                    target: parseInt(target, 10),
-                    updatedAt: serverTimestamp()
-                }, { merge: true });
-                console.log("Daily goal set successfully.");
-            } catch (e) {
-                console.error("Error setting daily goal: ", e);
-            }
-        }
         
         /**
-         * NEW: Handles the bulk deletion of tasks based on completion status.
-         * @param {boolean} deleteCompleted - Whether to delete completed tasks.
-         * @param {boolean} deleteIncomplete - Whether to delete incomplete tasks.
+         * Archives the final score of the day to history.
+         */
+        async function archiveScore() {
+            if (!db || userId === 'anonymous' || currentScore === 0) return;
+
+            try {
+                const historyRef = collection(db, getUserCollectionPath('scoreHistory'));
+                
+                await addDoc(historyRef, {
+                    score: currentScore,
+                    date: serverTimestamp(), // Use server timestamp for reliable daily logging
+                    goalAchieved: currentScore >= dailyGoal && dailyGoal > 0,
+                    dailyGoal: dailyGoal
+                });
+                console.log(`Score ${currentScore} archived successfully.`);
+            } catch (e) {
+                console.error("Error archiving score: ", e);
+            }
+        }
+
+        /**
+         * Handles the bulk deletion of tasks based on completion status.
          */
         async function resetTasks(deleteCompleted, deleteIncomplete) {
             if (!db || userId === 'anonymous') return;
+            
+            // Step 1: Archive the current score before deleting tasks
+            await archiveScore();
             
             try {
                 const tasksRef = collection(db, getUserCollectionPath('tasks'));
@@ -466,23 +645,45 @@
 
                 // Execute all deletions concurrently
                 await Promise.all(deletions);
-                console.log(`Successfully deleted ${deletions.length} tasks.`);
+                console.log(`Successfully deleted ${deletions.length} tasks and archived score.`);
                 
             } catch (e) {
                 console.error("Error during task reset/cleanup: ", e);
             }
         }
 
+        /**
+         * Saves a goal (daily, weekly, or monthly) to Firestore.
+         * @param {number} target - The goal score.
+         * @param {string} frequency - 'daily', 'weekly', 'monthly', or 'yearly'.
+         */
+        async function saveGoal(target, frequency) {
+            if (!db || userId === 'anonymous' || !target || target < 1) return;
+
+            try {
+                // Goal document is now named 'goals' to store all frequencies
+                const goalDocRef = doc(db, getUserCollectionPath('settings'), 'goals');
+                const data = {};
+                // Constructs field name, e.g., 'dailyGoal', 'weeklyGoal', 'monthlyGoal', 'yearlyGoal'
+                data[`${frequency}Goal`] = parseInt(target, 10);
+
+                await setDoc(goalDocRef, data, { merge: true });
+                console.log(`${frequency} goal set successfully.`);
+            } catch (e) {
+                console.error("Error setting goal: ", e);
+            }
+        }
+
 
         // --- Event Handlers ---
 
-        document.getElementById('new-task-form').addEventListener('submit', function(e) {
+        document.getElementById('new-task-form').addEventListener('submit', async function(e) { 
             e.preventDefault();
             const name = document.getElementById('task-name').value.trim();
             const points = document.getElementById('task-points').value;
             
             if (name && points) {
-                addTask(name, points);
+                await addTask(name, points); // Await the asynchronous Firestore operation
                 this.reset();
                 document.getElementById('task-name').focus();
             }
@@ -490,10 +691,41 @@
 
         // Goal Modal Handlers
         setGoalBtn.addEventListener('click', () => {
-            goalInput.value = dailyGoal > 0 ? dailyGoal : ''; // Pre-fill if goal exists
+            // Pre-fill logic based on selected frequency (defaulting to daily when opened)
+            const frequency = goalFrequencySelect.value;
+            let currentTarget = 0;
+            if (frequency === 'daily') currentTarget = dailyGoal;
+            else if (frequency === 'weekly') currentTarget = weeklyGoal;
+            else if (frequency === 'monthly') currentTarget = monthlyGoal;
+            else if (frequency === 'yearly') currentTarget = yearlyGoal; 
+
+            goalInput.value = currentTarget > 0 ? currentTarget : ''; // Pre-fill if goal exists
+            
             goalModal.classList.remove('hidden');
             goalInput.focus();
         });
+        
+        // Update input field placeholder when frequency changes
+        goalFrequencySelect.addEventListener('change', (e) => {
+            const frequency = e.target.value;
+            let currentTarget = 0;
+            
+            // Get current goal for selected frequency
+            if (frequency === 'daily') currentTarget = dailyGoal;
+            else if (frequency === 'weekly') currentTarget = weeklyGoal;
+            else if (frequency === 'monthly') currentTarget = monthlyGoal;
+            else if (frequency === 'yearly') currentTarget = yearlyGoal;
+            
+            // Set dynamic placeholder based on frequency
+            const placeholderText = frequency === 'daily' ? '20' : 
+                                    frequency === 'weekly' ? '150' : 
+                                    frequency === 'monthly' ? '600' :
+                                    '7500'; // Placeholder for Yearly Goal
+            
+            goalInput.placeholder = `E.g., ${placeholderText}`;
+            goalInput.value = currentTarget > 0 ? currentTarget : '';
+        });
+
 
         cancelGoalBtn.addEventListener('click', () => {
             goalModal.classList.add('hidden');
@@ -501,8 +733,10 @@
 
         saveGoalBtn.addEventListener('click', () => {
             const newGoal = parseInt(goalInput.value, 10);
-            if (newGoal > 0) {
-                saveDailyGoal(newGoal);
+            const frequency = goalFrequencySelect.value; // Get selected frequency
+            
+            if (newGoal > 0 && frequency) {
+                saveGoal(newGoal, frequency); // Pass frequency
                 goalModal.classList.add('hidden');
             } else {
                 goalInput.style.borderColor = 'red'; 
@@ -527,14 +761,15 @@
             renderTasks();
         });
         
-        // NEW: Task Reset Handlers
+        // Task Reset Handlers
         resetTasksBtn.addEventListener('click', () => {
+            // Update score in the modal right before opening
+            currentScoreModalEl.textContent = currentScore; 
             resetModal.classList.remove('hidden');
         });
         
         cancelResetBtn.addEventListener('click', () => {
             resetModal.classList.add('hidden');
-            // Reset the incomplete checkbox state on cancel
             deleteIncompleteCheckbox.checked = false; 
         });
         
@@ -545,11 +780,11 @@
             resetModal.classList.add('hidden');
             
             // Show a brief message while deleting
-            taskListEl.innerHTML = `<p class="text-center text-indigo-500 py-6 font-semibold"><i class="fas fa-sync-alt fa-spin mr-2"></i> Performing cleanup...</p>`;
+            taskListEl.innerHTML = `<p class="text-center text-indigo-500 py-6 font-semibold"><i class="fas fa-sync-alt fa-spin mr-2"></i> Performing cleanup and saving score...</p>`;
 
             await resetTasks(deleteCompleted, deleteIncomplete);
             
-            // Note: The onSnapshot listener will automatically re-render the list upon completion.
+            // The onSnapshot listener will automatically re-render the list upon completion.
         });
 
 
